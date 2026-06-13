@@ -26,7 +26,11 @@ export type ScreenDefinition = {
   key: ScreenKey;
   title: string;
   group: ScreenGroup;
-  render: () => JSX.Element;
+  render: (props: ScreenRenderProps) => JSX.Element;
+};
+
+export type ScreenRenderProps = {
+  navigate: (screen: ScreenKey) => void;
 };
 
 export type WorkerJob = {

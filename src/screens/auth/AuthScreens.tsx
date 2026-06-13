@@ -6,6 +6,7 @@ import {
 } from "../../components/ui";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import type { ScreenRenderProps, UserRole } from "../../types/domain";
 
 export function LoadingScreen() {
   return (
@@ -19,7 +20,7 @@ export function LoadingScreen() {
   );
 }
 
-export function LoginScreen() {
+export function LoginScreen({ navigate }: ScreenRenderProps) {
   const [rememberPassword, setRememberPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showInvalidCredentials, setShowInvalidCredentials] = useState(false);
@@ -56,7 +57,7 @@ export function LoginScreen() {
           onToggleSecure={() => setShowPassword((current) => !current)}
           placeholder="Ingrese su contrasena"
           secure={!showPassword}
-          toggleIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+          toggleIcon={showPassword ? "eye-outline" : "eye-off-outline"}
         />
 
         <View style={local.loginOptionsRow}>
@@ -85,7 +86,12 @@ export function LoginScreen() {
 
         <View style={styles.centerStack}>
           <Text style={local.registerPrompt}>No tienes cuenta?</Text>
-          <Text style={local.registerLink}>Registrate</Text>
+          <Pressable
+            onPress={() => navigate("profileSelection")}
+            style={({ pressed }) => [local.registerButton, pressed && local.registerButtonPressed]}
+          >
+            <Text style={local.registerLink}>Registrate</Text>
+          </Pressable>
         </View>
       </View>
     </ScreenFrame>
@@ -131,18 +137,53 @@ function LoginField({
   );
 }
 
-export function ProfileSelectionScreen() {
+export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+
+  const toggleRole = (role: UserRole) => {
+    setSelectedRole((currentRole) => (currentRole === role ? null : role));
+  };
+
   return (
-    <ScreenFrame gradient>
-      <View style={local.heroTop}>
-        <Text style={local.heroTitle}>Encuentra el servicio que necesitas cuando lo necesitas</Text>
-        <Text style={local.heroQuestion}>Cual es tu perfil?</Text>
+    <ScreenFrame noPadding>
+      <View style={local.profileTopBand} />
+      <View style={local.profileContent}>
+        <Text style={local.profileIntro}>Encuentra el servicio que{"\n"}necesitas cuando lo necesitas</Text>
+        <Text style={local.profileQuestion}>Cual es tu perfil?</Text>
+
+        <View style={local.profileRoleGrid}>
+          <RoleCard
+            icon="person-add-outline"
+            label="Cliente"
+            onPress={() => toggleRole("client")}
+            selected={selectedRole === "client"}
+          />
+          <RoleCard
+            icon="briefcase-outline"
+            label="Trabajador"
+            onPress={() => toggleRole("worker")}
+            selected={selectedRole === "worker"}
+          />
+        </View>
+
+        <View style={local.profileActions}>
+          <Pressable
+            disabled={!selectedRole}
+            style={[local.profileContinueButton, !selectedRole && local.profileContinueButtonDisabled]}
+          >
+            <Text style={[local.profileContinueText, !selectedRole && local.profileContinueTextDisabled]}>
+              Continuar
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => navigate("login")}
+            style={({ pressed }) => [local.cancelButton, pressed && local.cancelButtonPressed]}
+          >
+            <Text style={local.cancelButtonText}>Cancelar</Text>
+          </Pressable>
+        </View>
       </View>
-      <View style={local.roleGrid}>
-        <RoleCard icon="person-outline" label="Cliente" />
-        <RoleCard icon="construct-outline" label="Trabajador" selected />
-      </View>
-      <PrimaryButton label="Continuar" />
     </ScreenFrame>
   );
 }
@@ -150,17 +191,26 @@ export function ProfileSelectionScreen() {
 function RoleCard({
   icon,
   label,
+  onPress,
   selected
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  onPress: () => void;
   selected?: boolean;
 }) {
   return (
-    <View style={[local.roleCard, selected && local.roleCardSelected]}>
-      <Ionicons name={icon} size={42} color={selected ? "#1976D2" : "#021B30"} />
-      <Text style={styles.cardTitle}>{label}</Text>
-    </View>
+    <Pressable onPress={onPress} style={[local.roleCard, selected && local.roleCardSelected]}>
+      {selected ? (
+        <View style={local.roleCheck}>
+          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+        </View>
+      ) : null}
+      <View style={local.roleIconCircle}>
+        <Ionicons name={icon} size={36} color="#1976D2" />
+      </View>
+      <Text style={local.roleLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -244,7 +294,37 @@ const local = {
   loginButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" as const },
   loginDivider: { height: 1, backgroundColor: "#C9D1DB", marginTop: 18, marginBottom: 2 },
   registerPrompt: { color: "#101820", fontSize: 15, fontWeight: "700" as const },
+  registerButton: { borderBottomWidth: 1, borderBottomColor: "transparent" },
+  registerButtonPressed: { borderBottomColor: "#58A8FF", opacity: 0.72 },
   registerLink: { color: "#006FE6", fontSize: 15, fontWeight: "800" as const },
+  profileTopBand: {
+    height: 60,
+    backgroundColor: "#021B30",
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14
+  },
+  profileContent: {
+    flex: 1,
+    paddingHorizontal: 23,
+    paddingTop: 18,
+    paddingBottom: 34
+  },
+  profileIntro: {
+    color: "#09243A",
+    fontSize: 18,
+    lineHeight: 26,
+    textAlign: "center" as const,
+    fontWeight: "500" as const
+  },
+  profileQuestion: {
+    color: "#09243A",
+    fontSize: 23,
+    fontWeight: "900" as const,
+    textAlign: "center" as const,
+    marginTop: 10,
+    marginBottom: 30
+  },
+  profileRoleGrid: { gap: 24 },
   heroTop: { marginTop: 58, gap: 28 },
   heroTitle: {
     color: "#FFFFFF",
@@ -261,16 +341,67 @@ const local = {
   },
   roleGrid: { gap: 20, marginVertical: 34 },
   roleCard: {
-    minHeight: 150,
-    borderRadius: 8,
+    minHeight: 148,
+    borderRadius: 38,
     backgroundColor: "#FFFFFF",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 12,
-    borderWidth: 2,
-    borderColor: "transparent"
+    borderWidth: 1,
+    borderColor: "#1677F2",
+    position: "relative" as const
   },
-  roleCardSelected: { borderColor: "#00B8FF" },
+  roleCardSelected: {
+    borderColor: "#00B8FF",
+    borderWidth: 2,
+    shadowColor: "#00B8FF",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3
+  },
+  roleIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#DDEAFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  roleCheck: {
+    position: "absolute" as const,
+    right: -2,
+    top: 28,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#00B8FF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  roleLabel: { color: "#101820", fontSize: 13, fontWeight: "700" as const },
+  profileActions: { gap: 12, marginTop: 68 },
+  cancelButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E5484D",
+    backgroundColor: "#FFF5F5",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  cancelButtonPressed: { backgroundColor: "#FFE8E8", borderColor: "#C92A2A" },
+  cancelButtonText: { color: "#C92A2A", fontSize: 14, fontWeight: "800" as const },
+  profileContinueButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  profileContinueButtonDisabled: { backgroundColor: "#D6DEE8" },
+  profileContinueText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" as const },
+  profileContinueTextDisabled: { color: "#6D7B88" },
   loadingRing: {
     width: 200,
     height: 200,

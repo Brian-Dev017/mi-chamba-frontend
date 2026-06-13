@@ -10,13 +10,16 @@ export default function MiChambaPrototype() {
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
+  const screenProps = {
+    navigate: setActiveKey
+  };
 
   if (Platform.OS !== "web") {
     return (
       <SafeAreaView style={styles.nativeShell}>
         <StatusBar style="dark" />
         <View style={styles.nativeScreen}>
-          <ActiveScreen />
+          <ActiveScreen {...screenProps} />
         </View>
       </SafeAreaView>
     );
@@ -37,7 +40,7 @@ export default function MiChambaPrototype() {
 
       <View style={styles.phoneStage}>
         <View style={styles.phone}>
-          <ActiveScreen />
+          <ActiveScreen {...screenProps} />
         </View>
       </View>
 
