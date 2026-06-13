@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
 import type { ScreenKey } from "../types/domain";
@@ -10,6 +10,17 @@ export default function MiChambaPrototype() {
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
+
+  if (Platform.OS !== "web") {
+    return (
+      <SafeAreaView style={styles.nativeShell}>
+        <StatusBar style="dark" />
+        <View style={styles.nativeScreen}>
+          <ActiveScreen />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.shell}>
@@ -56,6 +67,13 @@ export default function MiChambaPrototype() {
 }
 
 const styles = StyleSheet.create({
+  nativeShell: {
+    flex: 1,
+    backgroundColor: palette.paper
+  },
+  nativeScreen: {
+    flex: 1
+  },
   shell: {
     flex: 1,
     backgroundColor: "#E8EEF5"
