@@ -16,17 +16,23 @@ export function ScreenFrame({
   children,
   centered,
   gradient,
-  darkTop
+  darkTop,
+  noPadding
 }: {
   children: ReactNode;
   centered?: boolean;
   gradient?: boolean;
   darkTop?: boolean;
+  noPadding?: boolean;
 }) {
   return (
     <ScrollView
       style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
-      contentContainerStyle={[styles.screenContent, centered && styles.centerContent]}
+      contentContainerStyle={[
+        styles.screenContent,
+        noPadding && styles.screenContentNoPadding,
+        centered && styles.centerContent
+      ]}
       showsVerticalScrollIndicator={false}
     >
       {children}
@@ -212,6 +218,7 @@ export { Ionicons, palette };
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
   screenContent: { padding: 20, paddingBottom: 34, minHeight: 744, gap: 16 },
+  screenContentNoPadding: { padding: 0, paddingBottom: 34, gap: 0 },
   centerContent: { justifyContent: "center", alignItems: "center" },
   gradientScreen: { backgroundColor: palette.ink },
   darkTopScreen: { backgroundColor: palette.ink },
