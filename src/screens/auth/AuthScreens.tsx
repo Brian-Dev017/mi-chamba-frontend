@@ -169,6 +169,11 @@ export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
         <View style={local.profileActions}>
           <Pressable
             disabled={!selectedRole}
+            onPress={() => {
+              if (selectedRole === "worker") {
+                navigate("personalInformation");
+              }
+            }}
             style={[local.profileContinueButton, !selectedRole && local.profileContinueButtonDisabled]}
           >
             <Text style={[local.profileContinueText, !selectedRole && local.profileContinueTextDisabled]}>
