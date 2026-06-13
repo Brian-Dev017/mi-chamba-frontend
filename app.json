@@ -8,10 +8,25 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Mi Chamba necesita acceder a la camara para tomar tu foto de perfil.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Mi Chamba necesita acceder a la camara para tomar tu foto de perfil."
+      }
     },
     "android": {
+      "permissions": [
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#021B30"
       }

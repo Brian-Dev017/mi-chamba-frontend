@@ -7,11 +7,17 @@ import type { ScreenKey } from "../types/domain";
 
 export default function MiChambaPrototype() {
   const [activeKey, setActiveKey] = useState<ScreenKey>("login");
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [pendingProfilePhotoUri, setPendingProfilePhotoUri] = useState<string | null>(null);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
   const screenProps = {
-    navigate: setActiveKey
+    navigate: setActiveKey,
+    profilePhotoUri,
+    setProfilePhotoUri,
+    pendingProfilePhotoUri,
+    setPendingProfilePhotoUri
   };
 
   if (Platform.OS !== "web") {

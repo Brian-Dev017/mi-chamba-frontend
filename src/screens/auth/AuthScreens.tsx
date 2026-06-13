@@ -21,6 +21,7 @@ export function LoadingScreen() {
 }
 
 export function LoginScreen({ navigate }: ScreenRenderProps) {
+  const [dni, setDni] = useState("");
   const [rememberPassword, setRememberPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showInvalidCredentials, setShowInvalidCredentials] = useState(false);
@@ -49,7 +50,10 @@ export function LoginScreen({ navigate }: ScreenRenderProps) {
           icon="person-outline"
           keyboardType="numeric"
           label="DNI / Usuario"
+          maxLength={8}
+          onChangeText={(value) => setDni(value.replace(/\D/g, "").slice(0, 8))}
           placeholder="12345678"
+          value={dni}
         />
         <LoginField
           icon="lock-closed-outline"
@@ -102,18 +106,24 @@ function LoginField({
   icon,
   keyboardType,
   label,
+  maxLength,
+  onChangeText,
   onToggleSecure,
   placeholder,
   secure,
-  toggleIcon
+  toggleIcon,
+  value
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   keyboardType?: "default" | "numeric";
   label: string;
+  maxLength?: number;
+  onChangeText?: (value: string) => void;
   onToggleSecure?: () => void;
   placeholder: string;
   secure?: boolean;
   toggleIcon?: keyof typeof Ionicons.glyphMap;
+  value?: string;
 }) {
   return (
     <View style={local.loginFieldBlock}>
@@ -122,10 +132,13 @@ function LoginField({
         <Ionicons name={icon} size={20} color="#1677F2" />
         <TextInput
           keyboardType={keyboardType}
+          maxLength={maxLength}
+          onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
           secureTextEntry={secure}
           style={local.loginInput}
+          value={value}
         />
         {toggleIcon && onToggleSecure ? (
           <Pressable onPress={onToggleSecure} hitSlop={10}>

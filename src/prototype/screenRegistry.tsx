@@ -11,6 +11,7 @@ import {
   PersonalInformationScreen,
   ProfessionalInformationScreen,
   ProfilePhotoConfirmationScreen,
+  ProfilePhotoCameraScreen,
   ProfilePhotoInstructionsScreen,
   WorkerConfirmationScreen
 } from "../screens/onboarding/OnboardingScreens";
@@ -73,6 +74,12 @@ export const screenRegistry: ScreenDefinition[] = [
     title: "Instrucciones Foto de Perfil",
     group: "Verificacion",
     render: ProfilePhotoInstructionsScreen
+  },
+  {
+    key: "profilePhotoCamera",
+    title: "Camara Foto de Perfil",
+    group: "Verificacion",
+    render: ProfilePhotoCameraScreen
   },
   {
     key: "profilePhotoConfirmation",

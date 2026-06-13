@@ -14,6 +14,7 @@ export type ScreenKey =
   | "frontDniConfirmation"
   | "backDniConfirmation"
   | "profilePhotoInstructions"
+  | "profilePhotoCamera"
   | "profilePhotoConfirmation"
   | "workerConfirmation"
   | "workerHome"
@@ -31,6 +32,10 @@ export type ScreenDefinition = {
 
 export type ScreenRenderProps = {
   navigate: (screen: ScreenKey) => void;
+  profilePhotoUri: string | null;
+  setProfilePhotoUri: (uri: string | null) => void;
+  pendingProfilePhotoUri: string | null;
+  setPendingProfilePhotoUri: (uri: string | null) => void;
 };
 
 export type WorkerJob = {

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useRef, useState } from "react";
+import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   Field,
   InfoCard,
@@ -133,7 +134,7 @@ const isSameMonth = (left: Date, right: Date) =>
 const isSameDate = (left: Date, right: Date) =>
   isSameMonth(left, right) && left.getDate() === right.getDate();
 
-export function PersonalInformationScreen({ navigate }: ScreenRenderProps) {
+export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenRenderProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -177,9 +178,15 @@ export function PersonalInformationScreen({ navigate }: ScreenRenderProps) {
           </Pressable>
         </View>
 
-        <Pressable style={local.avatarPicker}>
-          <Ionicons name="camera-outline" size={28} color="#1976D2" />
-          <Text style={local.avatarText}>Tomar foto</Text>
+        <Pressable onPress={() => navigate("profilePhotoInstructions")} style={local.avatarPicker}>
+          {profilePhotoUri ? (
+            <Image source={{ uri: profilePhotoUri }} style={local.avatarPreview} />
+          ) : (
+            <>
+              <Ionicons name="camera-outline" size={28} color="#1976D2" />
+              <Text style={local.avatarText}>Tomar foto</Text>
+            </>
+          )}
         </Pressable>
         <Text style={local.avatarCaption}>Agrega una foto de perfil</Text>
 
@@ -462,45 +469,214 @@ export function DocumentConfirmation({ side }: { side: "ANVERSO" | "REVERSO" }) 
   );
 }
 
-export function ProfilePhotoInstructionsScreen() {
+export function ProfilePhotoInstructionsScreen({ navigate }: ScreenRenderProps) {
   return (
-    <ScreenFrame>
-      <SectionTitle title="Su foto de perfil" />
-      <Text style={styles.bodyText}>
-        Para validar tu identidad y generar confianza con tus futuros clientes.
-      </Text>
-      <View style={local.bulletBlock}>
-        <Bullet text="Tomar una buena selfie" />
-        <Bullet text="Asegurese de que tu rostro este completamente visible" />
-        <Bullet text="No use gorra, ni lentes de sol" />
-      </View>
-      <View style={local.selfieGuide}>
-        <View style={local.selfieCircle}>
-          <Ionicons name="person-outline" size={86} color="#D6DEE8" />
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.photoInstructionScreen}>
+        <View style={local.personalHeader}>
+          <View style={local.personalTitleBlock}>
+            <Text style={local.personalTitle}>Su foto de perfil</Text>
+            <View style={local.personalTitleUnderline} />
+          </View>
+          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10} style={local.photoConfirmClose}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
         </View>
+
+        <Text style={local.photoIntro}>
+          Para validar tu identidad y generar confianza con tus futuros clientes.
+        </Text>
+
+        <View style={local.photoBulletBlock}>
+          <PhotoBullet text="Tomar una buena selfie" />
+          <PhotoBullet text="Asegurese de que tu rostro este completamente visible" />
+          <PhotoBullet text="No use gorra, ni lentes de sol" />
+        </View>
+
+        <View style={local.faceGuide}>
+          <View style={[local.scanCorner, local.scanCornerTopLeft]} />
+          <View style={[local.scanCorner, local.scanCornerTopRight]} />
+          <View style={[local.scanCorner, local.scanCornerBottomLeft]} />
+          <View style={[local.scanCorner, local.scanCornerBottomRight]} />
+          <View style={local.faceOval}>
+            <View style={local.faceIconHead} />
+            <View style={local.faceIconBody} />
+          </View>
+        </View>
+
+        <View style={local.photoInfoPill}>
+          <Ionicons name="information-circle-outline" size={19} color="#00A6FF" />
+          <Text style={local.photoInfoText}>
+            Su foto sera revisada manualmente por nuestro equipo de soporte para asegurar que cumpla con los
+            estandares de seguridad de Mi Chamba.
+          </Text>
+        </View>
+
       </View>
-      <Text style={styles.captionText}>
-        Su foto sera revisada manualmente por nuestro equipo de soporte.
-      </Text>
-      <PrimaryButton label="Tomar Foto" />
+
+      <View style={local.photoFooter}>
+        <Pressable onPress={() => navigate("profilePhotoCamera")} style={local.takePhotoButton}>
+          <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
+          <Text style={local.takePhotoText}>Tomar Foto</Text>
+        </Pressable>
+      </View>
     </ScreenFrame>
   );
 }
 
-export function ProfilePhotoConfirmationScreen() {
+export function ProfilePhotoCameraScreen({ navigate, setPendingProfilePhotoUri }: ScreenRenderProps) {
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraError, setCameraError] = useState("");
+  const [isTakingPhoto, setIsTakingPhoto] = useState(false);
+
+  const handleTakePhoto = async () => {
+    setCameraError("");
+
+    if (!permission?.granted) {
+      const requestedPermission = await requestPermission();
+
+      if (!requestedPermission.granted) {
+        setCameraError("Necesitamos permiso de camara para validar tu identidad.");
+        return;
+      }
+    }
+
+    try {
+      setIsTakingPhoto(true);
+      const photo = await cameraRef.current?.takePictureAsync({
+        quality: 0.85,
+        skipProcessing: false
+      });
+
+      if (photo?.uri) {
+        setPendingProfilePhotoUri(photo.uri);
+        navigate("profilePhotoConfirmation");
+      }
+    } catch {
+      setCameraError("No se pudo tomar la foto. Intentalo nuevamente.");
+    } finally {
+      setIsTakingPhoto(false);
+    }
+  };
+
   return (
-    <ScreenFrame>
-      <View style={local.facePreview}>
-        <Ionicons name="person" size={118} color="#FFFFFF" />
+    <View style={local.cameraScreen}>
+      {!permission?.granted ? (
+        <View style={local.cameraPermissionPanel}>
+          <Ionicons name="camera-outline" size={44} color="#1976D2" />
+          <Text style={local.cameraPermissionTitle}>Permiso de camara</Text>
+          <Text style={local.cameraPermissionText}>
+            Necesitamos activar la camara para tomar tu foto y validar tu identidad.
+          </Text>
+          <Pressable onPress={requestPermission} style={local.cameraPermissionButton}>
+            <Text style={local.cameraPermissionButtonText}>Permitir camara</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={local.cameraOverlay}>
+        <Pressable onPress={() => navigate("profilePhotoInstructions")} style={local.cameraCloseButton}>
+          <Ionicons name="close" size={24} color="#FFFFFF" />
+        </Pressable>
+
+        <View style={local.cameraBrand}>
+          <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
+          <Text style={local.cameraBrandText}>Mi Chamba ID</Text>
+        </View>
+
+        <Text style={local.cameraTitle}>Ubica tu rostro en el marco,{"\n"}sin lentes, gorras o accesorios</Text>
+
+        <View style={local.cameraFaceGuide}>
+          {permission?.granted ? (
+            <View style={local.cameraOvalViewport}>
+              <CameraView ref={cameraRef} active facing="front" mirror style={local.cameraOvalPreview} />
+            </View>
+          ) : null}
+          <View style={local.cameraFaceOval} />
+          <View style={local.cameraFaceOvalGlow} />
+        </View>
+
+        {cameraError ? <Text style={local.cameraLiveErrorText}>{cameraError}</Text> : null}
+
+        <View style={local.cameraActionArea}>
+          <Pressable
+            disabled={isTakingPhoto}
+            onPress={handleTakePhoto}
+            style={[local.cameraCaptureButton, isTakingPhoto && local.cameraCaptureButtonDisabled]}
+          >
+            <View style={local.cameraCaptureInner} />
+          </Pressable>
+          <Text style={local.cameraCaptureLabel}>{isTakingPhoto ? "Tomando foto..." : "Tomar foto"}</Text>
+        </View>
       </View>
-      <SectionTitle title="Te gusta tu foto?" centered />
-      <Text style={[styles.bodyText, styles.textCenter]}>Esta foto sera visible para tus clientes</Text>
-      <View style={local.validPill}>
-        <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-        <Text style={local.validText}>Foto valida</Text>
+    </View>
+  );
+}
+
+export function ProfilePhotoConfirmationScreen({
+  navigate,
+  pendingProfilePhotoUri,
+  setPendingProfilePhotoUri,
+  setProfilePhotoUri
+}: ScreenRenderProps) {
+  const handleUsePhoto = () => {
+    if (pendingProfilePhotoUri) {
+      setProfilePhotoUri(pendingProfilePhotoUri);
+      setPendingProfilePhotoUri(null);
+      navigate("personalInformation");
+    }
+  };
+
+  const handleRetakePhoto = () => {
+    setPendingProfilePhotoUri(null);
+    navigate("profilePhotoCamera");
+  };
+
+  return (
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.photoConfirmScreen}>
+        <View style={local.photoConfirmHeader}>
+          <Text style={local.photoConfirmTitle}>Te gusta tu foto?</Text>
+          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
+        </View>
+
+        <Text style={local.photoConfirmSubtitle}>Esta foto sera visible para tus clientes</Text>
+
+        <View style={local.photoPreviewRing}>
+          {pendingProfilePhotoUri ? (
+            <Image resizeMode="cover" source={{ uri: pendingProfilePhotoUri }} style={local.photoPreviewImage} />
+          ) : (
+            <View style={local.photoPreviewFallback}>
+              <Ionicons name="person-outline" size={92} color="#D6DEE8" />
+            </View>
+          )}
+        </View>
+
+        <View style={local.photoValidRow}>
+          <View style={local.photoValidIcon}>
+            <Ionicons name="checkmark" size={15} color="#1976D2" />
+          </View>
+          <Text style={local.photoValidText}>Foto valida</Text>
+        </View>
       </View>
-      <PrimaryButton label="Usar esta foto" />
-      <SecondaryButton label="Tomar otra foto" />
+
+      <View style={local.photoConfirmFooter}>
+        <Pressable
+          disabled={!pendingProfilePhotoUri}
+          onPress={handleUsePhoto}
+          style={[local.usePhotoButton, !pendingProfilePhotoUri && local.usePhotoButtonDisabled]}
+        >
+          <Text style={local.usePhotoButtonText}>Usar esta foto</Text>
+        </Pressable>
+        <Pressable onPress={handleRetakePhoto} style={local.retakePhotoButton}>
+          <Text style={local.retakePhotoButtonText}>Tomar otra foto</Text>
+        </Pressable>
+      </View>
     </ScreenFrame>
   );
 }
@@ -547,6 +723,15 @@ function Bullet({ text }: { text: string }) {
     <View style={local.bulletRow}>
       <Ionicons name="checkmark-circle-outline" size={20} color="#1976D2" />
       <Text style={styles.bodyText}>{text}</Text>
+    </View>
+  );
+}
+
+function PhotoBullet({ text }: { text: string }) {
+  return (
+    <View style={local.photoBulletRow}>
+      <Ionicons name="checkmark-circle-outline" size={21} color="#1976D2" />
+      <Text style={local.photoBulletText}>{text}</Text>
     </View>
   );
 }
@@ -598,6 +783,11 @@ const local = {
     color: "#1976D2",
     fontSize: 12,
     fontWeight: "500" as const
+  },
+  avatarPreview: {
+    width: "100%" as const,
+    height: "100%" as const,
+    borderRadius: 13
   },
   avatarCaption: {
     color: "#09243A",
@@ -791,6 +981,421 @@ const local = {
   calendarCloseText: {
     color: "#C92A2A",
     fontSize: 13,
+    fontWeight: "800" as const
+  },
+  photoInstructionScreen: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    minHeight: 592
+  },
+  photoIntro: {
+    color: "#25364A",
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: -8,
+    marginBottom: 14,
+    fontWeight: "600" as const
+  },
+  photoBulletBlock: {
+    gap: 14,
+    marginBottom: 24
+  },
+  photoBulletRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12
+  },
+  photoBulletText: {
+    flex: 1,
+    color: "#09243A",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "800" as const
+  },
+  faceGuide: {
+    width: 230,
+    height: 230,
+    alignSelf: "center" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const,
+    marginTop: 2,
+    marginBottom: 24
+  },
+  faceOval: {
+    width: 172,
+    height: 200,
+    borderRadius: 86,
+    borderWidth: 2,
+    borderColor: "#B5D5FA",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  faceIconHead: {
+    width: 31,
+    height: 31,
+    borderRadius: 16,
+    borderWidth: 4,
+    borderColor: "#1976D2",
+    marginBottom: 18
+  },
+  faceIconBody: {
+    width: 86,
+    height: 48,
+    borderTopLeftRadius: 43,
+    borderTopRightRadius: 43,
+    borderWidth: 4,
+    borderBottomWidth: 0,
+    borderColor: "#1976D2"
+  },
+  scanCorner: {
+    position: "absolute" as const,
+    width: 30,
+    height: 30,
+    borderColor: "#1976D2"
+  },
+  scanCornerTopLeft: {
+    top: 6,
+    left: 12,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 26
+  },
+  scanCornerTopRight: {
+    top: 6,
+    right: 12,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 26
+  },
+  scanCornerBottomLeft: {
+    bottom: 6,
+    left: 12,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 26
+  },
+  scanCornerBottomRight: {
+    bottom: 6,
+    right: 12,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 26
+  },
+  photoInfoPill: {
+    minHeight: 72,
+    borderRadius: 36,
+    backgroundColor: "#C5C8D0",
+    paddingHorizontal: 14,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 9
+  },
+  photoInfoText: {
+    flex: 1,
+    color: "#5D6570",
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "600" as const
+  },
+  cameraErrorText: {
+    color: "#C92A2A",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800" as const,
+    textAlign: "center" as const,
+    marginTop: 10
+  },
+  photoFooter: {
+    minHeight: 86,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E5EB",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingTop: 14
+  },
+  takePhotoButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    backgroundColor: "#021B30",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 12
+  },
+  takePhotoText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800" as const
+  },
+  cameraScreen: {
+    flex: 1,
+    minHeight: 744,
+    backgroundColor: "#3C4147"
+  },
+  cameraPermissionPanel: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    padding: 24,
+    backgroundColor: "#F5F8FC",
+    gap: 12
+  },
+  cameraPermissionTitle: {
+    color: "#09243A",
+    fontSize: 20,
+    fontWeight: "900" as const
+  },
+  cameraPermissionText: {
+    color: "#506070",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center" as const
+  },
+  cameraPermissionButton: {
+    minHeight: 44,
+    borderRadius: 22,
+    backgroundColor: "#021B30",
+    paddingHorizontal: 22,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginTop: 8
+  },
+  cameraPermissionButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800" as const
+  },
+  cameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(20, 24, 28, 0.78)",
+    alignItems: "center" as const,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 30
+  },
+  cameraCloseButton: {
+    position: "absolute" as const,
+    top: 30,
+    left: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0, 0, 0, 0.18)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  cameraBrand: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 5,
+    minHeight: 26
+  },
+  cameraBrandText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900" as const,
+    opacity: 0.92
+  },
+  cameraTitle: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700" as const,
+    textAlign: "center" as const,
+    marginTop: 56,
+    opacity: 0.9
+  },
+  cameraFaceGuide: {
+    width: 296,
+    height: 382,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const,
+    marginTop: 10
+  },
+  cameraOvalViewport: {
+    width: 260,
+    height: 340,
+    borderRadius: 130,
+    overflow: "hidden" as const,
+    backgroundColor: "#20252B"
+  },
+  cameraOvalPreview: {
+    width: "100%" as const,
+    height: "100%" as const
+  },
+  cameraFaceOval: {
+    position: "absolute" as const,
+    width: 260,
+    height: 340,
+    borderRadius: 130,
+    borderWidth: 4,
+    borderStyle: "dashed" as const,
+    borderColor: "#12D1C4",
+    backgroundColor: "transparent"
+  },
+  cameraFaceOvalGlow: {
+    position: "absolute" as const,
+    width: 274,
+    height: 354,
+    borderRadius: 137,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.55)"
+  },
+  cameraLiveErrorText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800" as const,
+    textAlign: "center" as const,
+    backgroundColor: "rgba(201, 42, 42, 0.88)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    overflow: "hidden" as const
+  },
+  cameraActionArea: {
+    marginTop: "auto" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    marginBottom: 12
+  },
+  cameraCaptureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  cameraCaptureButtonDisabled: { opacity: 0.62 },
+  cameraCaptureInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#FFFFFF"
+  },
+  cameraCaptureLabel: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "900" as const
+  },
+  photoConfirmScreen: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    minHeight: 502,
+    alignItems: "center" as const
+  },
+  photoConfirmHeader: {
+    width: "100%" as const,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const
+  },
+  photoConfirmClose: {
+    position: "absolute" as const,
+    right: 0,
+    top: 0
+  },
+  photoConfirmTitle: {
+    color: "#09243A",
+    fontSize: 18,
+    fontWeight: "500" as const,
+    textAlign: "center" as const
+  },
+  photoConfirmSubtitle: {
+    color: "#6D7480",
+    fontSize: 15,
+    fontWeight: "700" as const,
+    textAlign: "center" as const,
+    marginTop: 12,
+    marginBottom: 26
+  },
+  photoPreviewRing: {
+    width: 172,
+    height: 222,
+    borderRadius: 86,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 7,
+    borderColor: "#F3F5F8",
+    overflow: "hidden" as const,
+    shadowColor: "#000000",
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  photoPreviewImage: {
+    width: 158,
+    height: 208,
+    borderRadius: 79
+  },
+  photoPreviewFallback: {
+    width: 158,
+    height: 208,
+    borderRadius: 79,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  photoValidRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 9,
+    marginTop: 18
+  },
+  photoValidIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#DDEAFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  photoValidText: {
+    color: "#59A6FF",
+    fontSize: 13,
+    fontWeight: "900" as const
+  },
+  photoConfirmFooter: {
+    minHeight: 190,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    gap: 14
+  },
+  usePhotoButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  usePhotoButtonDisabled: { backgroundColor: "#D6DEE8" },
+  usePhotoButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900" as const
+  },
+  retakePhotoButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#1677F2",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  retakePhotoButtonText: {
+    color: "#09243A",
+    fontSize: 14,
     fontWeight: "800" as const
   },
   documentRow: { flexDirection: "row" as const, gap: 12 },
