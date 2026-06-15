@@ -42,6 +42,10 @@ const monthLabels = [
 
 const weekdayLabels = ["D", "L", "M", "M", "J", "V", "S"];
 
+type IdentityDocumentType = "DNI" | "Carnet de extranjeria";
+
+const identityDocumentOptions: IdentityDocumentType[] = ["DNI", "Carnet de extranjeria"];
+
 const formatDateForInput = (date: Date) => {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -146,7 +150,8 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const birthDateError = birthDateTouched ? validateBirthDate(birthDate, today) : "";
   const isBirthDateValid = !validateBirthDate(birthDate, today);
-  const canContinue = firstName.trim().length > 0 && lastName.trim().length > 0 && isBirthDateValid;
+  const canContinue =
+    firstName.trim().length > 0 && lastName.trim().length > 0 && Boolean(profilePhotoUri) && isBirthDateValid;
 
   const openCalendar = () => {
     setCalendarMonth(selectedBirthDate ?? maxAdultBirthDate);
@@ -189,6 +194,9 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
           )}
         </Pressable>
         <Text style={local.avatarCaption}>Agrega una foto de perfil</Text>
+        <Text style={[local.requiredHint, profilePhotoUri && local.successHint]}>
+          {profilePhotoUri ? "Foto cargada correctamente" : "Foto requerida para continuar"}
+        </Text>
 
         <View style={local.personalForm}>
           <PersonalField
@@ -230,7 +238,7 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
           style={[local.nextButton, !canContinue && local.nextButtonDisabled]}
         >
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
-          <Ionicons name="play-forward" size={14} color="#FFFFFF" />
+          <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
         </Pressable>
       </View>
       <BirthDateCalendar
@@ -252,10 +260,12 @@ function PersonalField({
   label,
   maxLength,
   onChangeText,
+  editable = true,
   onIconPress,
   placeholder,
   value
 }: {
+  editable?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
   keyboardType?: "default" | "number-pad";
   label: string;
@@ -268,14 +278,15 @@ function PersonalField({
   return (
     <View style={local.personalFieldBlock}>
       <Text style={local.personalFieldLabel}>{label}</Text>
-      <View style={local.personalInputShell}>
+      <View style={[local.personalInputShell, !editable && local.personalInputShellDisabled]}>
         <TextInput
+          editable={editable}
           keyboardType={keyboardType}
           maxLength={maxLength}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
-          style={local.personalInput}
+          style={[local.personalInput, !editable && local.personalInputDisabled]}
           value={value}
         />
         {icon ? (
@@ -396,22 +407,127 @@ function BirthDateCalendar({
   );
 }
 
-export function IdentityScreen() {
+export function IdentityScreen({ navigate }: ScreenRenderProps) {
+  const [documentType, setDocumentType] = useState<IdentityDocumentType | null>(null);
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [documentTouched, setDocumentTouched] = useState(false);
+  const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
+  const expectedLength = documentType === "Carnet de extranjeria" ? 9 : 8;
+  const documentLabel = documentType ?? "Seleccionar documento";
+  const documentNumberError =
+    documentTouched && documentType && documentNumber.length !== expectedLength
+      ? `${documentType} debe tener ${expectedLength} numeros`
+      : "";
+  const canContinue = Boolean(documentType) && documentNumber.length === expectedLength;
+
+  const handleDocumentTypeSelect = (selectedType: IdentityDocumentType) => {
+    setDocumentType(selectedType);
+    setDocumentNumber("");
+    setDocumentTouched(false);
+    setIsDocumentMenuOpen(false);
+  };
+
+  const handleDocumentNumberChange = (value: string) => {
+    setDocumentTouched(true);
+    setDocumentNumber(value.replace(/\D/g, "").slice(0, expectedLength));
+  };
+
   return (
-    <RegistrationFrame title="Cedula de identidad" step={2}>
-      <View style={local.documentRow}>
-        <DocumentUpload label="Anverso" />
-        <DocumentUpload label="Reverso" />
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.identityScreen}>
+        <View style={local.personalHeader}>
+          <View style={local.personalTitleBlock}>
+            <Text style={local.personalTitle}>Cedula de identidad</Text>
+            <View style={local.personalTitleUnderline} />
+          </View>
+          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
+        </View>
+
+        <View style={local.identityDocumentPhotoRow}>
+          <IdentityPhotoUpload label="Anverso" onPress={() => navigate("frontDniInstructions")} />
+          <IdentityPhotoUpload label="Reverso" onPress={() => navigate("backDniInstructions")} />
+        </View>
+
+        <View style={local.identityForm}>
+          <View style={local.personalFieldBlock}>
+            <Text style={local.personalFieldLabel}>Tipo de documento</Text>
+            <Pressable onPress={() => setIsDocumentMenuOpen(true)} style={local.identitySelectShell}>
+              <Text style={[local.identitySelectText, !documentType && local.identitySelectPlaceholder]}>
+                {documentLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={22} color="#B6BEC9" />
+            </Pressable>
+          </View>
+
+          <PersonalField
+            editable={Boolean(documentType)}
+            keyboardType="number-pad"
+            label="Numero de documento"
+            maxLength={expectedLength}
+            onChangeText={handleDocumentNumberChange}
+            placeholder={
+              documentType
+                ? documentType === "Carnet de extranjeria"
+                  ? "Ej: 123456789"
+                  : "Ej: 12345678"
+                : "Selecciona primero el tipo"
+            }
+            value={documentNumber}
+          />
+          {documentNumberError ? <Text style={local.validationText}>{documentNumberError}</Text> : null}
+        </View>
+
+        <View style={local.identityInfoPill}>
+          <Ionicons name="information-circle-outline" size={20} color="#00A6FF" />
+          <View style={local.identityInfoCopy}>
+            <Text style={local.identityInfoTitle}>Al momento de tomar la foto:</Text>
+            <Text style={local.identityInfoText}>
+              Asegurate de que sea clara y que todos los datos sean legibles para evitar retrasos en tu verificacion.
+            </Text>
+          </View>
+        </View>
       </View>
-      <Field label="Tipo de documento" placeholder="DNI" />
-      <Field label="Numero de documento" placeholder="Ej: 12345678" />
-      <InfoCard>
-        <Text style={local.infoText}>
-          Asegurate de que la foto sea clara y que todos los datos sean legibles para evitar
-          retrasos en tu verificacion.
-        </Text>
-      </InfoCard>
-    </RegistrationFrame>
+
+      <View style={local.identityFooter}>
+        <Text style={local.stepText}>Paso 2 de 3</Text>
+        <View style={local.personalStepRow}>
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={local.personalStepBar} />
+        </View>
+        <View style={local.identityFooterActions}>
+          <Pressable onPress={() => navigate("personalInformation")} style={local.backButton}>
+            <Ionicons name="play-back" size={14} color="#FFFFFF" />
+            <Text style={local.nextButtonText}>Regresar</Text>
+          </Pressable>
+          <Pressable
+            disabled={!canContinue}
+            onPress={() => navigate("professionalInformation")}
+            style={[local.identityNextButton, !canContinue && local.nextButtonDisabled]}
+          >
+            <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
+            <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
+          </Pressable>
+        </View>
+      </View>
+
+      <Modal animationType="fade" transparent visible={isDocumentMenuOpen} onRequestClose={() => setIsDocumentMenuOpen(false)}>
+        <Pressable style={local.documentMenuOverlay} onPress={() => setIsDocumentMenuOpen(false)}>
+          <View style={local.documentMenuCard}>
+            <Text style={local.documentMenuTitle}>Tipo de documento</Text>
+            {identityDocumentOptions.map((option) => (
+              <Pressable key={option} onPress={() => handleDocumentTypeSelect(option)} style={local.documentMenuOption}>
+                <Text style={local.documentMenuOptionText}>{option}</Text>
+                {documentType === option ? <Ionicons name="checkmark" size={20} color="#1976D2" /> : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </ScreenFrame>
   );
 }
 
@@ -704,6 +820,18 @@ function DocumentUpload({ label }: { label: string }) {
   );
 }
 
+function IdentityPhotoUpload({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <View style={local.identityPhotoBlock}>
+      <Pressable onPress={onPress} style={({ pressed }) => [local.identityPhotoBox, pressed && local.identityPhotoBoxPressed]}>
+        <Ionicons name="camera-outline" size={28} color="#1976D2" />
+        <Text style={local.avatarText}>Tomar foto</Text>
+      </Pressable>
+      <Text style={local.identityPhotoLabel}>{label}</Text>
+    </View>
+  );
+}
+
 function DocumentMock({ caption }: { caption: string }) {
   return (
     <View style={local.documentMock}>
@@ -795,7 +923,17 @@ const local = {
     fontWeight: "700" as const,
     textAlign: "center" as const,
     marginTop: 8,
-    marginBottom: 24
+    marginBottom: 6
+  },
+  requiredHint: {
+    color: "#6D7B88",
+    fontSize: 12,
+    fontWeight: "700" as const,
+    textAlign: "center" as const,
+    marginBottom: 18
+  },
+  successHint: {
+    color: "#1976D2"
   },
   personalForm: { gap: 22 },
   personalFieldBlock: { gap: 4 },
@@ -814,11 +952,18 @@ const local = {
     flexDirection: "row" as const,
     alignItems: "center" as const
   },
+  personalInputShellDisabled: {
+    borderColor: "#C9D1DB",
+    backgroundColor: "#F1F4F8"
+  },
   personalInput: {
     flex: 1,
     color: "#09243A",
     fontSize: 15,
     paddingVertical: 0
+  },
+  personalInputDisabled: {
+    color: "#7B8794"
   },
   validationText: {
     color: "#C92A2A",
@@ -878,6 +1023,162 @@ const local = {
     fontWeight: "700" as const
   },
   nextButtonTextDisabled: { color: "#6D7B88" },
+  identityScreen: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    minHeight: 590
+  },
+  identityDocumentPhotoRow: {
+    flexDirection: "row" as const,
+    justifyContent: "space-around" as const,
+    marginTop: 24,
+    marginBottom: 32
+  },
+  identityPhotoBlock: {
+    alignItems: "center" as const,
+    gap: 26
+  },
+  identityPhotoBox: {
+    width: 102,
+    height: 102,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed" as const,
+    borderColor: "#1976D2",
+    backgroundColor: "#F7FAFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 4
+  },
+  identityPhotoBoxPressed: {
+    backgroundColor: "#EAF4FF",
+    transform: [{ scale: 0.98 }]
+  },
+  identityPhotoLabel: {
+    color: "#09243A",
+    fontSize: 15,
+    fontWeight: "800" as const
+  },
+  identityForm: {
+    gap: 20,
+    marginBottom: 38
+  },
+  identitySelectShell: {
+    minHeight: 46,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#1677F2",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 13,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const
+  },
+  identitySelectText: {
+    color: "#09243A",
+    fontSize: 15,
+    fontWeight: "600" as const
+  },
+  identitySelectPlaceholder: {
+    color: "#B6BEC9",
+    fontWeight: "500" as const
+  },
+  identityInfoPill: {
+    minHeight: 102,
+    borderRadius: 26,
+    backgroundColor: "#C5C8D0",
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10
+  },
+  identityInfoCopy: {
+    flex: 1,
+    gap: 10
+  },
+  identityInfoTitle: {
+    color: "#5D6570",
+    fontSize: 12,
+    fontWeight: "700" as const
+  },
+  identityInfoText: {
+    color: "#4F5965",
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "600" as const
+  },
+  identityFooter: {
+    minHeight: 106,
+    borderTopWidth: 1,
+    borderTopColor: "#CFD5DD",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    position: "relative" as const
+  },
+  identityFooterActions: {
+    marginTop: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const
+  },
+  backButton: {
+    minHeight: 32,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "#00A6FF",
+    backgroundColor: "#021B30",
+    paddingHorizontal: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 4
+  },
+  identityNextButton: {
+    minHeight: 32,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "#00A6FF",
+    backgroundColor: "#021B30",
+    paddingHorizontal: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 4
+  },
+  documentMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(2, 27, 48, 0.45)",
+    justifyContent: "center" as const,
+    padding: 24
+  },
+  documentMenuCard: {
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    gap: 6
+  },
+  documentMenuTitle: {
+    color: "#09243A",
+    fontSize: 16,
+    fontWeight: "900" as const,
+    marginBottom: 4
+  },
+  documentMenuOption: {
+    minHeight: 46,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    backgroundColor: "#F7FAFF"
+  },
+  documentMenuOptionText: {
+    color: "#09243A",
+    fontSize: 14,
+    fontWeight: "800" as const
+  },
   calendarOverlay: {
     flex: 1,
     backgroundColor: "rgba(2, 27, 48, 0.55)",
