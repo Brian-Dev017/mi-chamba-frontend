@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
-import type { RegistrationDraft, ScreenKey } from "../types/domain";
+import type { RegisteredWorker, RegistrationDraft, ScreenKey } from "../types/domain";
 
 const initialRegistrationDraft: RegistrationDraft = {
   firstName: "",
@@ -16,7 +16,11 @@ const initialRegistrationDraft: RegistrationDraft = {
   clientPhone: "",
   clientPassword: "",
   clientPasswordConfirmation: "",
-  clientAddress: ""
+  clientAddress: "",
+  clientLatitude: null,
+  clientLongitude: null,
+  workerPassword: "",
+  workerPasswordConfirmation: ""
 };
 
 export default function MiChambaPrototype() {
@@ -27,6 +31,8 @@ export default function MiChambaPrototype() {
   const [frontDniPhotoUri, setFrontDniPhotoUri] = useState<string | null>(null);
   const [backDniPhotoUri, setBackDniPhotoUri] = useState<string | null>(null);
   const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
+  const [registeredWorkers, setRegisteredWorkers] = useState<RegisteredWorker[]>([]);
+  const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
@@ -39,6 +45,41 @@ export default function MiChambaPrototype() {
     setBackDniPhotoUri(null);
     setPendingDniPhotoUri(null);
   }, []);
+
+  const registerWorker = useCallback(() => {
+    const {
+      birthDate,
+      documentNumber,
+      documentType,
+      firstName,
+      lastName,
+      professionalTrade,
+      certificateUri,
+      workerPassword
+    } = registrationDraft;
+
+    if (!documentType || !professionalTrade || !documentNumber || !workerPassword) {
+      return;
+    }
+
+    const worker: RegisteredWorker = {
+      id: documentNumber,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      birthDate,
+      documentType,
+      documentNumber,
+      password: workerPassword,
+      professionalTrade,
+      certificateUri,
+      profilePhotoUri
+    };
+
+    setRegisteredWorkers((currentWorkers) => [
+      ...currentWorkers.filter((currentWorker) => currentWorker.documentNumber !== documentNumber),
+      worker
+    ]);
+  }, [profilePhotoUri, registrationDraft]);
 
   const screenProps = {
     navigate: setActiveKey,
@@ -54,7 +95,11 @@ export default function MiChambaPrototype() {
     backDniPhotoUri,
     setBackDniPhotoUri,
     pendingDniPhotoUri,
-    setPendingDniPhotoUri
+    setPendingDniPhotoUri,
+    registeredWorkers,
+    registerWorker,
+    authenticatedWorker,
+    setAuthenticatedWorker
   };
 
   if (Platform.OS !== "web") {

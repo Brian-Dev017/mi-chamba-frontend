@@ -1,6 +1,6 @@
 import { ScrollView, Text, View } from "react-native";
 import { requestDetail, workerJobs, workerReviews } from "../../data/mockData";
-import type { WorkerJob } from "../../types/domain";
+import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
   DetailRow,
   InfoCard,
@@ -15,15 +15,27 @@ import {
   styles
 } from "../../components/ui";
 
-export function WorkerHomeScreen() {
+export function WorkerHomeScreen({ authenticatedWorker, navigate, setAuthenticatedWorker }: ScreenRenderProps) {
+  const workerName = authenticatedWorker
+    ? `${authenticatedWorker.lastName}, ${authenticatedWorker.firstName}`
+    : "Perez Perez, Juan";
+
   return (
     <WorkerShell active="Solicitudes">
       <View style={styles.rowBetween}>
         <View>
           <Text style={styles.smallMuted}>Bienvenido</Text>
-          <Text style={styles.screenTitle}>Perez Perez, Juan</Text>
+          <Text style={styles.screenTitle}>{workerName}</Text>
         </View>
-        <Text style={local.exitText}>Salir</Text>
+        <Text
+          onPress={() => {
+            setAuthenticatedWorker(null);
+            navigate("login");
+          }}
+          style={local.exitText}
+        >
+          Salir
+        </Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={local.filterRow}>
         {["Todos", "Cerca", "Mejor Precio", "Electricidad"].map((filter, index) => (

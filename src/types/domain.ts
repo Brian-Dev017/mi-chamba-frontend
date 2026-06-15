@@ -48,6 +48,23 @@ export type RegistrationDraft = {
   clientPassword: string;
   clientPasswordConfirmation: string;
   clientAddress: string;
+  clientLatitude: number | null;
+  clientLongitude: number | null;
+  workerPassword: string;
+  workerPasswordConfirmation: string;
+};
+
+export type RegisteredWorker = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  documentType: "DNI" | "Carnet de extranjeria";
+  documentNumber: string;
+  password: string;
+  professionalTrade: "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
+  certificateUri: string | null;
+  profilePhotoUri: string | null;
 };
 
 export type ScreenRenderProps = {
@@ -65,6 +82,10 @@ export type ScreenRenderProps = {
   setBackDniPhotoUri: (uri: string | null) => void;
   pendingDniPhotoUri: string | null;
   setPendingDniPhotoUri: (uri: string | null) => void;
+  registeredWorkers: RegisteredWorker[];
+  registerWorker: () => void;
+  authenticatedWorker: RegisteredWorker | null;
+  setAuthenticatedWorker: (worker: RegisteredWorker | null) => void;
 };
 
 export type WorkerJob = {

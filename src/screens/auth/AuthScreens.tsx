@@ -4,27 +4,89 @@ import {
   ScreenFrame,
   styles
 } from "../../components/ui";
-import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, Text, TextInput, View } from "react-native";
 import type { ScreenRenderProps, UserRole } from "../../types/domain";
 
-export function LoadingScreen() {
+export function LoadingScreen({ navigate }: ScreenRenderProps) {
+  const rotation = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 1050,
+        easing: Easing.linear,
+        useNativeDriver: true
+      })
+    );
+
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 260,
+      useNativeDriver: true
+    }).start();
+    spin.start();
+
+    const timer = setTimeout(() => {
+      spin.stop();
+      navigate("workerHome");
+    }, 1800);
+
+    return () => {
+      clearTimeout(timer);
+      spin.stop();
+    };
+  }, [navigate, opacity, rotation]);
+
+  const rotate = rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"]
+  });
+
   return (
-    <ScreenFrame centered>
-      <View style={local.loadingRing}>
-        <View style={local.logoBadge}>
-          <Text style={local.logoMark}>MC</Text>
+    <ScreenFrame noPadding>
+      <View style={local.loadingTopBand} />
+      <Animated.View style={[local.loadingScreen, { opacity }]}>
+        <View style={local.loadingOrbit}>
+          <Animated.View style={[local.loadingArc, { transform: [{ rotate }] }]} />
+          <View style={local.loadingLogoBadge}>
+            <Text style={local.logoMarkBlue}>MC</Text>
+            <Text style={local.logoWordSmall}>Mi Chamba</Text>
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </ScreenFrame>
   );
 }
 
-export function LoginScreen({ navigate, resetRegistrationDraft }: ScreenRenderProps) {
+export function LoginScreen({
+  navigate,
+  registeredWorkers,
+  resetRegistrationDraft,
+  setAuthenticatedWorker
+}: ScreenRenderProps) {
   const [dni, setDni] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberPassword, setRememberPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showInvalidCredentials, setShowInvalidCredentials] = useState(false);
+
+  const handleLogin = () => {
+    const worker = registeredWorkers.find(
+      (registeredWorker) => registeredWorker.documentNumber === dni && registeredWorker.password === password
+    );
+
+    if (!worker) {
+      setShowInvalidCredentials(true);
+      return;
+    }
+
+    setShowInvalidCredentials(false);
+    setAuthenticatedWorker(worker);
+    navigate("loading");
+  };
 
   return (
     <ScreenFrame noPadding>
@@ -58,10 +120,12 @@ export function LoginScreen({ navigate, resetRegistrationDraft }: ScreenRenderPr
         <LoginField
           icon="lock-closed-outline"
           label="Contrasena"
+          onChangeText={(value) => setPassword(value)}
           onToggleSecure={() => setShowPassword((current) => !current)}
           placeholder="Ingrese su contrasena"
           secure={!showPassword}
           toggleIcon={showPassword ? "eye-outline" : "eye-off-outline"}
+          value={password}
         />
 
         <View style={local.loginOptionsRow}>
@@ -79,7 +143,7 @@ export function LoginScreen({ navigate, resetRegistrationDraft }: ScreenRenderPr
         </View>
 
         <Pressable
-          onPress={() => setShowInvalidCredentials(true)}
+          onPress={handleLogin}
           style={local.loginButton}
         >
           <Ionicons name="log-in-outline" size={22} color="#FFFFFF" />
@@ -248,7 +312,8 @@ function RoleCard({
 
 const local = {
   loginTopBand: {
-    height: 52,
+    height: 42,
+    marginTop: 18,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -330,7 +395,8 @@ const local = {
   registerButtonPressed: { borderBottomColor: "#58A8FF", opacity: 0.72 },
   registerLink: { color: "#006FE6", fontSize: 15, fontWeight: "800" as const },
   profileTopBand: {
-    height: 60,
+    height: 42,
+    marginTop: 18,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -434,6 +500,45 @@ const local = {
   profileContinueButtonDisabled: { backgroundColor: "#D6DEE8" },
   profileContinueText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" as const },
   profileContinueTextDisabled: { color: "#6D7B88" },
+  loadingTopBand: {
+    height: 42,
+    marginTop: 18,
+    backgroundColor: "#021B30",
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14
+  },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: "#F6F8FC",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  loadingOrbit: {
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const
+  },
+  loadingArc: {
+    position: "absolute" as const,
+    width: 164,
+    height: 164,
+    borderRadius: 82,
+    borderWidth: 16,
+    borderColor: "rgba(255, 255, 255, 0.96)",
+    borderRightColor: "#1976D2",
+    borderBottomColor: "#1976D2"
+  },
+  loadingLogoBadge: {
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: "rgba(255, 255, 255, 0.84)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
   loadingRing: {
     width: 200,
     height: 200,
