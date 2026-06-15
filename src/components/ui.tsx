@@ -1,12 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
 import { palette } from "../theme/palette";
@@ -18,15 +21,17 @@ export function ScreenFrame({
   centered,
   gradient,
   darkTop,
+  keyboardAware,
   noPadding
 }: {
   children: ReactNode;
   centered?: boolean;
   gradient?: boolean;
   darkTop?: boolean;
+  keyboardAware?: boolean;
   noPadding?: boolean;
 }) {
-  return (
+  const content = (
     <ScrollView
       style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
       contentContainerStyle={[
@@ -34,10 +39,24 @@ export function ScreenFrame({
         noPadding && styles.screenContentNoPadding,
         centered && styles.centerContent
       ]}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
+  );
+
+  if (!keyboardAware) {
+    return content;
+  }
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.keyboardFrame}
+    >
+      {content}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -231,9 +250,18 @@ export function ConfirmationDialog({
   title: string;
   visible: boolean;
 }) {
+  const { height, width } = useWindowDimensions();
+
   return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
-      <View style={styles.confirmOverlay}>
+    <Modal
+      animationType="fade"
+      hardwareAccelerated
+      statusBarTranslucent
+      transparent
+      visible={visible}
+      onRequestClose={onCancel}
+    >
+      <View style={[styles.confirmOverlay, { minHeight: height, width }]}>
         <View style={styles.confirmCard}>
           <View style={styles.confirmIconWrap}>
             <Ionicons name="alert-circle-outline" size={30} color={palette.red} />
@@ -256,8 +284,9 @@ export { Ionicons, palette };
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
-  screenContent: { padding: 20, paddingBottom: 34, minHeight: 744, gap: 16 },
-  screenContentNoPadding: { padding: 0, paddingBottom: 34, gap: 0 },
+  keyboardFrame: { flex: 1, backgroundColor: palette.paper },
+  screenContent: { flexGrow: 1, padding: 20, paddingBottom: 34, minHeight: 744, gap: 16 },
+  screenContentNoPadding: { padding: 0, paddingBottom: 0, gap: 0 },
   centerContent: { justifyContent: "center", alignItems: "center" },
   gradientScreen: { backgroundColor: palette.ink },
   darkTopScreen: { backgroundColor: palette.ink },
@@ -365,8 +394,9 @@ export const styles = StyleSheet.create({
   },
   mapLink: { color: palette.blue, fontSize: 14, fontWeight: "900" },
   confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
     flex: 1,
-    backgroundColor: "rgba(2, 27, 48, 0.52)",
+    backgroundColor: "rgba(2, 27, 48, 0.68)",
     alignItems: "center",
     justifyContent: "center",
     padding: 24

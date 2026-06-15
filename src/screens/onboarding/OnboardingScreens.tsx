@@ -1,7 +1,19 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import {
   ConfirmationDialog,
   Ionicons,
@@ -11,6 +23,10 @@ import {
 import type { ScreenKey, ScreenRenderProps } from "../../types/domain";
 
 const sanitizeLetters = (value: string) => value.replace(/[^A-Za-z\u00C0-\u017F\s]/g, "");
+const sanitizeDigits = (value: string, maxLength: number) => value.replace(/\D/g, "").slice(0, maxLength);
+
+const isSecurePassword = (value: string) =>
+  value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
 
 const formatBirthDate = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -44,6 +60,14 @@ type ProfessionalTrade = "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
 
 const identityDocumentOptions: IdentityDocumentType[] = ["DNI", "Carnet de extranjeria"];
 const professionalTradeOptions: ProfessionalTrade[] = ["Cerrajero", "Plomero", "Pintor", "Gasfitero"];
+const clientAddressSuggestions = [
+  "Av Bolognesi 498, Miraflores",
+  "Av Bolognesi 498, Barranco",
+  "Av Arequipa 1200, Lince",
+  "Jr Los Olivos 245, San Miguel",
+  "Av Javier Prado Este 560, San Isidro",
+  "Calle Los Laureles 180, Surco"
+];
 
 type ExitIntent = {
   action: "cancel" | "back";
@@ -142,6 +166,317 @@ const isSameMonth = (left: Date, right: Date) =>
 const isSameDate = (left: Date, right: Date) =>
   isSameMonth(left, right) && left.getDate() === right.getDate();
 
+export function ClientPersonalInformationScreen({
+  navigate,
+  registrationDraft,
+  resetRegistrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  const { clientPassword, clientPasswordConfirmation, clientPhone, firstName, lastName } = registrationDraft;
+  const isPhoneValid = clientPhone.length === 9;
+  const isPasswordValid = isSecurePassword(clientPassword);
+  const doPasswordsMatch = clientPassword.length > 0 && clientPassword === clientPasswordConfirmation;
+  const canContinue =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    isPhoneValid &&
+    isPasswordValid &&
+    doPasswordsMatch;
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { action, target } = exitIntent;
+    setExitIntent(null);
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
+    navigate(target);
+  };
+
+  return (
+    <View style={styles.screen}>
+      <View style={local.personalTopBand} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={local.clientKeyboardArea}
+      >
+        <ScrollView
+          contentContainerStyle={local.clientBodyScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={local.clientPersonalScreen}>
+            <View style={local.personalHeader}>
+              <View style={local.personalTitleBlock}>
+                <Text style={local.personalTitle}>Informacion personal</Text>
+                <View style={local.personalTitleUnderline} />
+              </View>
+              <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
+                <Ionicons name="close-circle" size={24} color="#111111" />
+              </Pressable>
+            </View>
+
+            <Text style={local.clientIntro}>
+              Ingresa tus datos principales para configurar tu cuenta de cliente.
+            </Text>
+
+            <View style={local.clientForm}>
+              <PersonalField
+                label="Nombre"
+                onChangeText={(value) =>
+                  setRegistrationDraft((currentDraft) => ({ ...currentDraft, firstName: sanitizeLetters(value) }))
+                }
+                placeholder="Juan Manuel"
+                value={firstName}
+              />
+              <PersonalField
+                label="Apellido"
+                onChangeText={(value) =>
+                  setRegistrationDraft((currentDraft) => ({ ...currentDraft, lastName: sanitizeLetters(value) }))
+                }
+                placeholder="Perez Fernandez"
+                value={lastName}
+              />
+              <PersonalField
+                keyboardType="number-pad"
+                label="Celular"
+                maxLength={9}
+                onChangeText={(value) =>
+                  setRegistrationDraft((currentDraft) => ({ ...currentDraft, clientPhone: sanitizeDigits(value, 9) }))
+                }
+                placeholder="999 999 999"
+                value={clientPhone}
+              />
+              {clientPhone.length > 0 && !isPhoneValid ? (
+                <Text style={local.clientValidationText}>Ingresa un celular de 9 numeros.</Text>
+              ) : null}
+              <PersonalField
+                icon={showPassword ? "eye-off-outline" : "eye-outline"}
+                label="Contrasena"
+                onChangeText={(value) =>
+                  setRegistrationDraft((currentDraft) => ({ ...currentDraft, clientPassword: value }))
+                }
+                onIconPress={() => setShowPassword((currentValue) => !currentValue)}
+                placeholder="Ingrese su contrasena"
+                secureTextEntry={!showPassword}
+                value={clientPassword}
+              />
+              <Text style={[local.passwordHelpText, clientPassword.length > 0 && !isPasswordValid && local.errorHelpText]}>
+                Usa al menos 8 caracteres, una mayuscula, una minuscula y un numero por seguridad.
+              </Text>
+              <PersonalField
+                icon={showPasswordConfirmation ? "eye-off-outline" : "eye-outline"}
+                label="Repetir contrasena"
+                onChangeText={(value) =>
+                  setRegistrationDraft((currentDraft) => ({
+                    ...currentDraft,
+                    clientPasswordConfirmation: value
+                  }))
+                }
+                onIconPress={() => setShowPasswordConfirmation((currentValue) => !currentValue)}
+                placeholder="Repita su contrasena"
+                secureTextEntry={!showPasswordConfirmation}
+                value={clientPasswordConfirmation}
+              />
+              {clientPasswordConfirmation.length > 0 && !doPasswordsMatch ? (
+                <Text style={local.clientValidationText}>Las contrasenas deben coincidir.</Text>
+              ) : null}
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <View style={local.personalFooter}>
+        <Text style={local.stepText}>Paso 1 de 3</Text>
+        <View style={local.personalStepRow}>
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={local.personalStepBar} />
+          <View style={local.personalStepBar} />
+        </View>
+        <Pressable
+          disabled={!canContinue}
+          onPress={() => navigate("clientLocation")}
+          style={[local.nextButton, !canContinue && local.nextButtonDisabled]}
+        >
+          <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
+          <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
+        </Pressable>
+      </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
+    </View>
+  );
+}
+
+export function ClientLocationScreen({
+  navigate,
+  registrationDraft,
+  resetRegistrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const { clientAddress } = registrationDraft;
+  const normalizedAddress = clientAddress.trim().toLowerCase();
+  const filteredSuggestions =
+    normalizedAddress.length >= 2
+      ? clientAddressSuggestions.filter((suggestion) => suggestion.toLowerCase().includes(normalizedAddress))
+      : [];
+  const fallbackSuggestions =
+    normalizedAddress.length >= 3 && filteredSuggestions.length === 0
+      ? [`${clientAddress.trim()}, Lima`, `${clientAddress.trim()}, Callao`]
+      : [];
+  const visibleSuggestions = [...filteredSuggestions, ...fallbackSuggestions].slice(0, 3);
+  const canContinue = clientAddress.trim().length >= 6;
+
+  const updateAddress = (value: string) => {
+    setRegistrationDraft((currentDraft) => ({ ...currentDraft, clientAddress: value }));
+  };
+
+  const useCurrentLocation = () => {
+    updateAddress("Ubicacion actual detectada - Lima, Peru");
+  };
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { action, target } = exitIntent;
+    setExitIntent(null);
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
+    navigate(target);
+  };
+
+  return (
+    <View style={styles.screen}>
+      <View style={local.personalTopBand} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={local.clientKeyboardArea}
+      >
+        <ScrollView
+          contentContainerStyle={local.clientBodyScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={local.clientLocationScreen}>
+            <View style={local.personalHeader}>
+              <View style={local.personalTitleBlock}>
+                <Text style={local.personalTitle}>Ubicacion</Text>
+                <View style={local.personalTitleUnderline} />
+              </View>
+              <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
+                <Ionicons name="close-circle" size={24} color="#111111" />
+              </Pressable>
+            </View>
+
+            <Text style={local.locationIntro}>Ingresa tu ubicacion exacta donde se dara el servicio</Text>
+
+            <View style={local.locationForm}>
+              <View>
+                <PersonalField
+                  label="Ubicacion exacta"
+                  onChangeText={updateAddress}
+                  placeholder="Av Bolognesi 498"
+                  value={clientAddress}
+                />
+                {visibleSuggestions.length > 0 ? (
+                  <View style={local.addressSuggestions}>
+                    {visibleSuggestions.map((suggestion) => (
+                      <Pressable
+                        key={suggestion}
+                        onPress={() => updateAddress(suggestion)}
+                        style={({ pressed }) => [
+                          local.addressSuggestionItem,
+                          pressed && local.addressSuggestionPressed
+                        ]}
+                      >
+                        <Ionicons name="location-outline" size={16} color="#1976D2" />
+                        <Text style={local.addressSuggestionText}>{suggestion}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={local.locationDividerRow}>
+                <View style={local.locationDividerLine} />
+                <Text style={local.locationDividerText}>o</Text>
+                <View style={local.locationDividerLine} />
+              </View>
+
+              <View style={local.mapPreview}>
+                <View style={[local.mapRoad, local.mapRoadHorizontalTop]} />
+                <View style={[local.mapRoad, local.mapRoadHorizontalBottom]} />
+                <View style={[local.mapRoad, local.mapRoadVerticalLeft]} />
+                <View style={[local.mapRoad, local.mapRoadVerticalRight]} />
+                <View style={local.mapBlockLarge} />
+                <View style={local.mapBlockSmall} />
+                <View style={local.mapPinPulse}>
+                  <View style={local.mapPin}>
+                    <Ionicons name="location" size={22} color="#FFFFFF" />
+                  </View>
+                </View>
+                <View style={local.mapLabel}>
+                  <Text style={local.mapLabelTitle}>Punto de servicio</Text>
+                  <Text style={local.mapLabelText}>{clientAddress || "Selecciona una direccion"}</Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={useCurrentLocation}
+                style={({ pressed }) => [local.currentLocationButton, pressed && local.currentLocationButtonPressed]}
+              >
+                <Ionicons name="locate" size={22} color="#1976D2" />
+                <Text style={local.currentLocationText}>Usar mi ubicacion actual</Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <View style={local.identityFooter}>
+        <Text style={local.stepText}>Paso 2 de 3</Text>
+        <View style={local.personalStepRow}>
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={local.personalStepBar} />
+        </View>
+        <View style={local.identityFooterActions}>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "clientPersonalInformation" })} style={local.backButton}>
+            <Ionicons name="play-back" size={14} color="#FFFFFF" />
+            <Text style={local.nextButtonText}>Regresar</Text>
+          </Pressable>
+          <Pressable disabled={!canContinue} onPress={() => undefined} style={[local.identityNextButton, !canContinue && local.nextButtonDisabled]}>
+            <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
+            <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
+          </Pressable>
+        </View>
+      </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
+    </View>
+  );
+}
+
 export function PersonalInformationScreen({
   navigate,
   profilePhotoUri,
@@ -202,7 +537,7 @@ export function PersonalInformationScreen({
             <Text style={local.personalTitle}>Informacion personal</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "profileSelection" })} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -319,20 +654,26 @@ function PersonalField({
   keyboardType,
   label,
   maxLength,
+  onBlur,
   onChangeText,
   editable = true,
+  onFocus,
   onIconPress,
   placeholder,
+  secureTextEntry,
   value
 }: {
   editable?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
-  keyboardType?: "default" | "number-pad";
+  keyboardType?: "default" | "number-pad" | "phone-pad";
   label: string;
   maxLength?: number;
+  onBlur?: () => void;
   onChangeText: (value: string) => void;
+  onFocus?: () => void;
   onIconPress?: () => void;
   placeholder: string;
+  secureTextEntry?: boolean;
   value: string;
 }) {
   return (
@@ -343,9 +684,12 @@ function PersonalField({
           editable={editable}
           keyboardType={keyboardType}
           maxLength={maxLength}
+          onBlur={onBlur}
           onChangeText={onChangeText}
+          onFocus={onFocus}
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
+          secureTextEntry={secureTextEntry}
           style={[local.personalInput, !editable && local.personalInputDisabled]}
           value={value}
         />
@@ -472,6 +816,7 @@ export function IdentityScreen({
   frontDniPhotoUri,
   navigate,
   registrationDraft,
+  resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
   const [documentTouched, setDocumentTouched] = useState(false);
@@ -510,8 +855,13 @@ export function IdentityScreen({
       return;
     }
 
-    const { target } = exitIntent;
+    const { action, target } = exitIntent;
     setExitIntent(null);
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
     navigate(target);
   };
 
@@ -524,7 +874,7 @@ export function IdentityScreen({
             <Text style={local.personalTitle}>Cedula de identidad</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -622,6 +972,7 @@ export function IdentityScreen({
 export function ProfessionalInformationScreen({
   navigate,
   registrationDraft,
+  resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
   const [isTradeMenuOpen, setIsTradeMenuOpen] = useState(false);
@@ -660,8 +1011,13 @@ export function ProfessionalInformationScreen({
       return;
     }
 
-    const { target } = exitIntent;
+    const { action, target } = exitIntent;
     setExitIntent(null);
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
     navigate(target);
   };
 
@@ -674,7 +1030,7 @@ export function ProfessionalInformationScreen({
             <Text style={local.personalTitle}>Informacion profesional</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -727,18 +1083,22 @@ export function ProfessionalInformationScreen({
             <Text style={local.professionalOptionalText}>Puedes continuar sin certificado.</Text>
           ) : null}
         </View>
-      </View>
-
-      <View style={local.professionalFooter}>
         <Pressable
           disabled={!trade}
           onPress={() => navigate("workerConfirmation")}
-          style={[local.finishRegistrationButton, !trade && local.finishRegistrationButtonDisabled]}
+          style={[
+            local.finishRegistrationButton,
+            local.professionalPrimaryAction,
+            !trade && local.finishRegistrationButtonDisabled
+          ]}
         >
           <Text style={[local.finishRegistrationText, !trade && local.nextButtonTextDisabled]}>
             Finalizar registro
           </Text>
         </Pressable>
+      </View>
+
+      <View style={local.professionalFooter}>
         <Text style={local.stepText}>Paso 3 de 3</Text>
         <View style={local.personalStepRow}>
           <View style={[local.personalStepBar, local.personalStepBarActive]} />
@@ -825,8 +1185,12 @@ export function DocumentInstruction({
             <Text style={local.personalTitle}>Cedula de identidad</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
-            <Ionicons name="close-circle" size={24} color="#111111" />
+          <Pressable
+            onPress={() => setExitIntent({ action: "back", target: "identity" })}
+            hitSlop={10}
+            style={local.headerBackButton}
+          >
+            <Ionicons name="chevron-back" size={22} color="#09243A" />
           </Pressable>
         </View>
 
@@ -931,7 +1295,7 @@ export function DocumentCameraScreen({
           onPress={() => setExitIntent({ action: "back", target: instructionKey })}
           style={local.cameraCloseButton}
         >
-          <Ionicons name="close" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
         </Pressable>
 
         <View style={local.cameraBrand}>
@@ -987,7 +1351,6 @@ export function DocumentConfirmation({
 }: ScreenRenderProps & { side: DniSide }) {
   const isFront = side === "ANVERSO";
   const cameraKey = isFront ? "frontDniCamera" : "backDniCamera";
-  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const title = isFront ? "Verifica el frente de tu documento" : "Verifica el reverso de tu documento";
   const helperText = isFront
     ? "Asegurate de que el numero de DNI y tu nombre sean legibles"
@@ -1013,16 +1376,6 @@ export function DocumentConfirmation({
     navigate(cameraKey);
   };
 
-  const handleConfirmExit = () => {
-    if (!exitIntent) {
-      return;
-    }
-
-    const { target } = exitIntent;
-    setExitIntent(null);
-    navigate(target);
-  };
-
   return (
     <ScreenFrame noPadding>
       <View style={local.personalTopBand} />
@@ -1032,9 +1385,6 @@ export function DocumentConfirmation({
             <Text style={local.personalTitle}>{title}</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
-            <Ionicons name="close-circle" size={24} color="#111111" />
-          </Pressable>
         </View>
 
         <Text style={local.documentConfirmHint}>{helperText}</Text>
@@ -1070,11 +1420,6 @@ export function DocumentConfirmation({
           <Text style={local.retakePhotoButtonText}>Tomar otra foto</Text>
         </Pressable>
       </View>
-      <RegistrationExitConfirmation
-        intent={exitIntent}
-        onCancel={() => setExitIntent(null)}
-        onConfirm={handleConfirmExit}
-      />
     </ScreenFrame>
   );
 }
@@ -1106,7 +1451,7 @@ export function ProfilePhotoInstructionsScreen({ navigate }: ScreenRenderProps) 
             hitSlop={10}
             style={local.photoConfirmClose}
           >
-            <Ionicons name="close-circle" size={24} color="#111111" />
+            <Ionicons name="chevron-back" size={22} color="#09243A" />
           </Pressable>
         </View>
 
@@ -1223,7 +1568,7 @@ export function ProfilePhotoCameraScreen({ navigate, setPendingProfilePhotoUri }
           onPress={() => setExitIntent({ action: "back", target: "profilePhotoInstructions" })}
           style={local.cameraCloseButton}
         >
-          <Ionicons name="close" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
         </Pressable>
 
         <View style={local.cameraBrand}>
@@ -1302,8 +1647,12 @@ export function ProfilePhotoConfirmationScreen({
       <View style={local.photoConfirmScreen}>
         <View style={local.photoConfirmHeader}>
           <Text style={local.photoConfirmTitle}>Te gusta tu foto?</Text>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} hitSlop={10}>
-            <Ionicons name="close-circle" size={24} color="#111111" />
+          <Pressable
+            onPress={() => setExitIntent({ action: "back", target: "personalInformation" })}
+            hitSlop={10}
+            style={local.headerBackButton}
+          >
+            <Ionicons name="chevron-back" size={22} color="#09243A" />
           </Pressable>
         </View>
 
@@ -1541,10 +1890,235 @@ const local = {
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
   },
+  clientKeyboardArea: {
+    flex: 1,
+    backgroundColor: "#F4F7FB"
+  },
+  clientBodyScroll: {
+    flexGrow: 1
+  },
+  clientPersonalScreen: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    minHeight: 564
+  },
+  clientLocationScreen: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    minHeight: 564
+  },
+  clientIntro: {
+    color: "#596472",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600" as const,
+    marginTop: 2,
+    marginBottom: 50,
+    maxWidth: 220
+  },
+  clientForm: {
+    gap: 21
+  },
+  clientValidationText: {
+    color: "#C92A2A",
+    fontSize: 11,
+    fontWeight: "700" as const,
+    marginTop: -14
+  },
+  passwordHelpText: {
+    color: "#6D7B88",
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "600" as const,
+    marginTop: -17,
+    paddingLeft: 10,
+    maxWidth: 270
+  },
+  errorHelpText: {
+    color: "#C92A2A"
+  },
+  locationIntro: {
+    color: "#596472",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600" as const,
+    marginTop: 18,
+    marginBottom: 28,
+    maxWidth: 290
+  },
+  locationForm: {
+    gap: 22
+  },
+  addressSuggestions: {
+    marginTop: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D6E7FF",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden" as const
+  },
+  addressSuggestionItem: {
+    minHeight: 42,
+    paddingHorizontal: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF3F8"
+  },
+  addressSuggestionPressed: {
+    backgroundColor: "#EAF4FF"
+  },
+  addressSuggestionText: {
+    flex: 1,
+    color: "#25364A",
+    fontSize: 12,
+    fontWeight: "700" as const
+  },
+  locationDividerRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10
+  },
+  locationDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#C4C6CD"
+  },
+  locationDividerText: {
+    color: "#25364A",
+    fontSize: 13,
+    fontWeight: "600" as const
+  },
+  mapPreview: {
+    height: 156,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#BBD8FF",
+    backgroundColor: "#EAF4FF",
+    overflow: "hidden" as const,
+    position: "relative" as const
+  },
+  mapRoad: {
+    position: "absolute" as const,
+    backgroundColor: "rgba(255, 255, 255, 0.86)"
+  },
+  mapRoadHorizontalTop: {
+    left: -18,
+    right: -18,
+    top: 42,
+    height: 16,
+    transform: [{ rotate: "-9deg" }]
+  },
+  mapRoadHorizontalBottom: {
+    left: -18,
+    right: -18,
+    bottom: 34,
+    height: 18,
+    transform: [{ rotate: "7deg" }]
+  },
+  mapRoadVerticalLeft: {
+    top: -18,
+    bottom: -18,
+    left: 70,
+    width: 16,
+    transform: [{ rotate: "14deg" }]
+  },
+  mapRoadVerticalRight: {
+    top: -18,
+    bottom: -18,
+    right: 78,
+    width: 18,
+    transform: [{ rotate: "-12deg" }]
+  },
+  mapBlockLarge: {
+    position: "absolute" as const,
+    left: 18,
+    top: 72,
+    width: 86,
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: "rgba(25, 118, 210, 0.11)"
+  },
+  mapBlockSmall: {
+    position: "absolute" as const,
+    right: 18,
+    top: 22,
+    width: 74,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(2, 27, 48, 0.08)"
+  },
+  mapPinPulse: {
+    position: "absolute" as const,
+    left: "50%" as const,
+    top: 49,
+    width: 64,
+    height: 64,
+    marginLeft: -32,
+    borderRadius: 32,
+    backgroundColor: "rgba(25, 118, 210, 0.16)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  mapPin: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#1976D2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 3,
+    borderColor: "#FFFFFF"
+  },
+  mapLabel: {
+    position: "absolute" as const,
+    left: 14,
+    right: 14,
+    bottom: 12,
+    minHeight: 38,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 12,
+    paddingVertical: 7
+  },
+  mapLabelTitle: {
+    color: "#1976D2",
+    fontSize: 11,
+    fontWeight: "900" as const
+  },
+  mapLabelText: {
+    color: "#25364A",
+    fontSize: 11,
+    fontWeight: "700" as const
+  },
+  currentLocationButton: {
+    minHeight: 45,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#1976D2",
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 9
+  },
+  currentLocationButtonPressed: {
+    backgroundColor: "#EAF4FF",
+    opacity: 0.9
+  },
+  currentLocationText: {
+    color: "#1976D2",
+    fontSize: 13,
+    fontWeight: "900" as const
+  },
   personalScreen: {
+    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 10,
-    minHeight: 534
+    minHeight: 564
   },
   personalHeader: {
     flexDirection: "row" as const,
@@ -1563,6 +2137,14 @@ const local = {
     height: 3,
     borderRadius: 99,
     backgroundColor: "#09243A"
+  },
+  headerBackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#EAF4FF"
   },
   avatarPicker: {
     width: 100,
@@ -1642,12 +2224,12 @@ const local = {
     marginTop: -14
   },
   personalFooter: {
-    minHeight: 98,
+    height: 124,
     borderTopWidth: 1,
     borderTopColor: "#CFD5DD",
     backgroundColor: "#FFFFFF",
-    paddingTop: 8,
-    paddingHorizontal: 28,
+    paddingTop: 10,
+    paddingHorizontal: 20,
     position: "relative" as const
   },
   stepText: {
@@ -1671,8 +2253,8 @@ const local = {
   nextButton: {
     position: "absolute" as const,
     right: 20,
-    bottom: 20,
-    minHeight: 30,
+    bottom: 58,
+    minHeight: 34,
     borderRadius: 17,
     borderWidth: 1,
     borderColor: "#00A6FF",
@@ -1694,9 +2276,10 @@ const local = {
   },
   nextButtonTextDisabled: { color: "#6D7B88" },
   identityScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 14,
-    minHeight: 590
+    minHeight: 564
   },
   identityDocumentPhotoRow: {
     flexDirection: "row" as const,
@@ -1786,22 +2369,25 @@ const local = {
     fontWeight: "600" as const
   },
   identityFooter: {
-    minHeight: 106,
+    height: 124,
     borderTopWidth: 1,
     borderTopColor: "#CFD5DD",
     backgroundColor: "#FFFFFF",
-    paddingTop: 8,
+    paddingTop: 10,
     paddingHorizontal: 20,
     position: "relative" as const
   },
   identityFooterActions: {
-    marginTop: 12,
+    position: "absolute" as const,
+    left: 20,
+    right: 20,
+    bottom: 58,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const
   },
   backButton: {
-    minHeight: 32,
+    minHeight: 34,
     borderRadius: 17,
     borderWidth: 1,
     borderColor: "#00A6FF",
@@ -1813,7 +2399,7 @@ const local = {
     gap: 4
   },
   identityNextButton: {
-    minHeight: 32,
+    minHeight: 34,
     borderRadius: 17,
     borderWidth: 1,
     borderColor: "#00A6FF",
@@ -1857,9 +2443,10 @@ const local = {
     fontWeight: "800" as const
   },
   professionalScreen: {
+    flex: 1,
     paddingHorizontal: 15,
     paddingTop: 14,
-    minHeight: 554
+    minHeight: 564
   },
   professionalIntro: {
     color: "#303A45",
@@ -1930,7 +2517,7 @@ const local = {
     marginTop: -10
   },
   professionalFooter: {
-    minHeight: 124,
+    height: 124,
     borderTopWidth: 1,
     borderTopColor: "#CFD5DD",
     backgroundColor: "#FFFFFF",
@@ -1944,7 +2531,7 @@ const local = {
     backgroundColor: "#021B30",
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    marginBottom: 14
+    marginBottom: 0
   },
   finishRegistrationButtonDisabled: {
     backgroundColor: "#D6DEE8"
@@ -1954,11 +2541,19 @@ const local = {
     fontSize: 14,
     fontWeight: "900" as const
   },
+  professionalPrimaryAction: {
+    marginTop: "auto" as const,
+    marginBottom: 22
+  },
   professionalBackButton: {
+    position: "absolute" as const,
+    left: 14,
+    bottom: 58,
     alignSelf: "flex-start" as const,
-    marginTop: 9
+    marginTop: 0
   },
   documentInstructionScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 14,
     minHeight: 590
@@ -1984,9 +2579,12 @@ const local = {
     marginTop: 86
   },
   documentInstructionFooter: {
-    minHeight: 144,
+    height: 124,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E5EB",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 22,
+    paddingVertical: 14,
     gap: 8
   },
   takeDocumentPhotoButton: {
@@ -2106,6 +2704,7 @@ const local = {
     borderBottomRightRadius: 16
   },
   documentConfirmScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 14,
     minHeight: 548
@@ -2164,10 +2763,10 @@ const local = {
     fontWeight: "600" as const
   },
   documentConfirmFooter: {
-    minHeight: 158,
+    height: 124,
     paddingHorizontal: 24,
-    paddingTop: 18,
-    gap: 14,
+    paddingVertical: 16,
+    gap: 12,
     backgroundColor: "#FFFFFF"
   },
   dniMockCard: {
@@ -2630,6 +3229,7 @@ const local = {
     fontWeight: "800" as const
   },
   photoInstructionScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 10,
     minHeight: 592
@@ -2753,12 +3353,13 @@ const local = {
     marginTop: 10
   },
   photoFooter: {
-    minHeight: 86,
+    height: 124,
     borderTopWidth: 1,
     borderTopColor: "#E0E5EB",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 20,
-    paddingTop: 14
+    paddingVertical: 14,
+    justifyContent: "center" as const
   },
   takePhotoButton: {
     minHeight: 44,
@@ -2824,9 +3425,9 @@ const local = {
     position: "absolute" as const,
     top: 30,
     left: 20,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(0, 0, 0, 0.18)",
     alignItems: "center" as const,
     justifyContent: "center" as const
@@ -2931,6 +3532,7 @@ const local = {
     fontWeight: "900" as const
   },
   photoConfirmScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 18,
     minHeight: 502,
@@ -2946,7 +3548,13 @@ const local = {
   photoConfirmClose: {
     position: "absolute" as const,
     right: 0,
-    top: 0
+    top: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#EAF4FF"
   },
   photoConfirmTitle: {
     color: "#09243A",
@@ -3012,10 +3620,11 @@ const local = {
     fontWeight: "900" as const
   },
   photoConfirmFooter: {
-    minHeight: 190,
+    height: 124,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 14
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: "#FFFFFF"
   },
   usePhotoButton: {
     minHeight: 44,

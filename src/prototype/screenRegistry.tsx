@@ -5,6 +5,8 @@ import {
   ProfileSelectionScreen
 } from "../screens/auth/AuthScreens";
 import {
+  ClientLocationScreen,
+  ClientPersonalInformationScreen,
   DocumentCameraScreen,
   DocumentConfirmation,
   DocumentInstruction,
@@ -32,6 +34,18 @@ export const screenRegistry: ScreenDefinition[] = [
     title: "PERFIL SELECTION",
     group: "Acceso",
     render: ProfileSelectionScreen
+  },
+  {
+    key: "clientPersonalInformation",
+    title: "CLIENTE INFORMACION PERSONAL",
+    group: "Registro",
+    render: ClientPersonalInformationScreen
+  },
+  {
+    key: "clientLocation",
+    title: "CLIENTE UBICACION",
+    group: "Registro",
+    render: ClientLocationScreen
   },
   {
     key: "personalInformation",

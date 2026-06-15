@@ -187,9 +187,7 @@ export function ProfileSelectionScreen({ navigate, resetRegistrationDraft }: Scr
           <Pressable
             disabled={!selectedRole}
             onPress={() => {
-              if (selectedRole === "worker") {
-                navigate("personalInformation");
-              }
+              navigate(selectedRole === "client" ? "clientPersonalInformation" : "personalInformation");
             }}
             style={[local.profileContinueButton, !selectedRole && local.profileContinueButtonDisabled]}
           >

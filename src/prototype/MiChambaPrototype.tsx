@@ -12,7 +12,11 @@ const initialRegistrationDraft: RegistrationDraft = {
   documentType: null,
   documentNumber: "",
   professionalTrade: null,
-  certificateUri: null
+  certificateUri: null,
+  clientPhone: "",
+  clientPassword: "",
+  clientPasswordConfirmation: "",
+  clientAddress: ""
 };
 
 export default function MiChambaPrototype() {

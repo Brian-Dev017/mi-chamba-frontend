@@ -8,6 +8,8 @@ export type ScreenKey =
   | "loading"
   | "login"
   | "profileSelection"
+  | "clientPersonalInformation"
+  | "clientLocation"
   | "personalInformation"
   | "identity"
   | "professionalInformation"
@@ -42,6 +44,10 @@ export type RegistrationDraft = {
   documentNumber: string;
   professionalTrade: "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero" | null;
   certificateUri: string | null;
+  clientPhone: string;
+  clientPassword: string;
+  clientPasswordConfirmation: string;
+  clientAddress: string;
 };
 
 export type ScreenRenderProps = {
