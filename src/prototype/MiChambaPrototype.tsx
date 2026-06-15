@@ -1,23 +1,56 @@
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
-import type { ScreenKey } from "../types/domain";
+import type { RegistrationDraft, ScreenKey } from "../types/domain";
+
+const initialRegistrationDraft: RegistrationDraft = {
+  firstName: "",
+  lastName: "",
+  birthDate: "",
+  documentType: null,
+  documentNumber: "",
+  professionalTrade: null,
+  certificateUri: null
+};
 
 export default function MiChambaPrototype() {
   const [activeKey, setActiveKey] = useState<ScreenKey>("login");
+  const [registrationDraft, setRegistrationDraft] = useState<RegistrationDraft>(initialRegistrationDraft);
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const [pendingProfilePhotoUri, setPendingProfilePhotoUri] = useState<string | null>(null);
+  const [frontDniPhotoUri, setFrontDniPhotoUri] = useState<string | null>(null);
+  const [backDniPhotoUri, setBackDniPhotoUri] = useState<string | null>(null);
+  const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
+
+  const resetRegistrationDraft = useCallback(() => {
+    setRegistrationDraft(initialRegistrationDraft);
+    setProfilePhotoUri(null);
+    setPendingProfilePhotoUri(null);
+    setFrontDniPhotoUri(null);
+    setBackDniPhotoUri(null);
+    setPendingDniPhotoUri(null);
+  }, []);
+
   const screenProps = {
     navigate: setActiveKey,
+    registrationDraft,
+    setRegistrationDraft,
+    resetRegistrationDraft,
     profilePhotoUri,
     setProfilePhotoUri,
     pendingProfilePhotoUri,
-    setPendingProfilePhotoUri
+    setPendingProfilePhotoUri,
+    frontDniPhotoUri,
+    setFrontDniPhotoUri,
+    backDniPhotoUri,
+    setBackDniPhotoUri,
+    pendingDniPhotoUri,
+    setPendingDniPhotoUri
   };
 
   if (Platform.OS !== "web") {

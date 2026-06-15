@@ -1,6 +1,6 @@
 import {
+  ConfirmationDialog,
   Ionicons,
-  PrimaryButton,
   ScreenFrame,
   styles
 } from "../../components/ui";
@@ -20,7 +20,7 @@ export function LoadingScreen() {
   );
 }
 
-export function LoginScreen({ navigate }: ScreenRenderProps) {
+export function LoginScreen({ navigate, resetRegistrationDraft }: ScreenRenderProps) {
   const [dni, setDni] = useState("");
   const [rememberPassword, setRememberPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -91,7 +91,10 @@ export function LoginScreen({ navigate }: ScreenRenderProps) {
         <View style={styles.centerStack}>
           <Text style={local.registerPrompt}>No tienes cuenta?</Text>
           <Pressable
-            onPress={() => navigate("profileSelection")}
+            onPress={() => {
+              resetRegistrationDraft();
+              navigate("profileSelection");
+            }}
             style={({ pressed }) => [local.registerButton, pressed && local.registerButtonPressed]}
           >
             <Text style={local.registerLink}>Registrate</Text>
@@ -150,8 +153,9 @@ function LoginField({
   );
 }
 
-export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
+export function ProfileSelectionScreen({ navigate, resetRegistrationDraft }: ScreenRenderProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   const toggleRole = (role: UserRole) => {
     setSelectedRole((currentRole) => (currentRole === role ? null : role));
@@ -195,13 +199,25 @@ export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
           </Pressable>
 
           <Pressable
-            onPress={() => navigate("login")}
+            onPress={() => setIsCancelConfirmOpen(true)}
             style={({ pressed }) => [local.cancelButton, pressed && local.cancelButtonPressed]}
           >
             <Text style={local.cancelButtonText}>Cancelar</Text>
           </Pressable>
         </View>
       </View>
+      <ConfirmationDialog
+        confirmLabel="Cancelar registro"
+        message="Estas cancelando el registro. Si confirmas, se perdera la informacion ingresada."
+        onCancel={() => setIsCancelConfirmOpen(false)}
+        onConfirm={() => {
+          setIsCancelConfirmOpen(false);
+          resetRegistrationDraft();
+          navigate("login");
+        }}
+        title="Cancelar registro?"
+        visible={isCancelConfirmOpen}
+      />
     </ScreenFrame>
   );
 }

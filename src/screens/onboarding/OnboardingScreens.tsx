@@ -1,18 +1,14 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRef, useState } from "react";
-import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import {
-  Field,
-  InfoCard,
+  ConfirmationDialog,
   Ionicons,
-  PrimaryButton,
-  RegistrationFrame,
   ScreenFrame,
-  SecondaryButton,
-  SectionTitle,
   styles
 } from "../../components/ui";
-import type { ScreenRenderProps } from "../../types/domain";
+import type { ScreenKey, ScreenRenderProps } from "../../types/domain";
 
 const sanitizeLetters = (value: string) => value.replace(/[^A-Za-z\u00C0-\u017F\s]/g, "");
 
@@ -43,8 +39,16 @@ const monthLabels = [
 const weekdayLabels = ["D", "L", "M", "M", "J", "V", "S"];
 
 type IdentityDocumentType = "DNI" | "Carnet de extranjeria";
+type DniSide = "ANVERSO" | "REVERSO";
+type ProfessionalTrade = "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
 
 const identityDocumentOptions: IdentityDocumentType[] = ["DNI", "Carnet de extranjeria"];
+const professionalTradeOptions: ProfessionalTrade[] = ["Cerrajero", "Plomero", "Pintor", "Gasfitero"];
+
+type ExitIntent = {
+  action: "cancel" | "back";
+  target: ScreenKey;
+} | null;
 
 const formatDateForInput = (date: Date) => {
   const day = String(date.getDate()).padStart(2, "0");
@@ -138,11 +142,16 @@ const isSameMonth = (left: Date, right: Date) =>
 const isSameDate = (left: Date, right: Date) =>
   isSameMonth(left, right) && left.getDate() === right.getDate();
 
-export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenRenderProps) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+export function PersonalInformationScreen({
+  navigate,
+  profilePhotoUri,
+  registrationDraft,
+  resetRegistrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
   const [birthDateTouched, setBirthDateTouched] = useState(false);
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const { birthDate, firstName, lastName } = registrationDraft;
   const today = getToday();
   const maxAdultBirthDate = getMaxAdultBirthDate(today);
   const selectedBirthDate = parseBirthDate(birthDate);
@@ -160,13 +169,28 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
 
   const handleBirthDateChange = (value: string) => {
     setBirthDateTouched(true);
-    setBirthDate(formatBirthDate(value));
+    setRegistrationDraft((currentDraft) => ({ ...currentDraft, birthDate: formatBirthDate(value) }));
   };
 
   const handleCalendarSelect = (date: Date) => {
     setBirthDateTouched(true);
-    setBirthDate(formatDateForInput(date));
+    setRegistrationDraft((currentDraft) => ({ ...currentDraft, birthDate: formatDateForInput(date) }));
     setIsCalendarOpen(false);
+  };
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { action, target } = exitIntent;
+    setExitIntent(null);
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
+    navigate(target);
   };
 
   return (
@@ -178,7 +202,7 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
             <Text style={local.personalTitle}>Informacion personal</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => navigate("profileSelection")} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "profileSelection" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -201,13 +225,17 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
         <View style={local.personalForm}>
           <PersonalField
             label="Nombre"
-            onChangeText={(value) => setFirstName(sanitizeLetters(value))}
+            onChangeText={(value) =>
+              setRegistrationDraft((currentDraft) => ({ ...currentDraft, firstName: sanitizeLetters(value) }))
+            }
             placeholder="Juan Manuel"
             value={firstName}
           />
           <PersonalField
             label="Apellido"
-            onChangeText={(value) => setLastName(sanitizeLetters(value))}
+            onChangeText={(value) =>
+              setRegistrationDraft((currentDraft) => ({ ...currentDraft, lastName: sanitizeLetters(value) }))
+            }
             placeholder="Perez Fernandez"
             value={lastName}
           />
@@ -250,7 +278,39 @@ export function PersonalInformationScreen({ navigate, profilePhotoUri }: ScreenR
         selectedDate={selectedBirthDate}
         visible={isCalendarOpen}
       />
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
+  );
+}
+
+function RegistrationExitConfirmation({
+  intent,
+  onCancel,
+  onConfirm
+}: {
+  intent: ExitIntent;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isCanceling = intent?.action === "cancel";
+
+  return (
+    <ConfirmationDialog
+      confirmLabel={isCanceling ? "Cancelar registro" : "Regresar"}
+      message={
+        isCanceling
+          ? "Estas cancelando el registro. Si confirmas, se perdera la informacion ingresada."
+          : "Estas regresando a un paso anterior. La informacion ingresada se mantendra guardada."
+      }
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      title={isCanceling ? "Cancelar registro?" : "Regresar al paso anterior?"}
+      visible={Boolean(intent)}
+    />
   );
 }
 
@@ -407,11 +467,18 @@ function BirthDateCalendar({
   );
 }
 
-export function IdentityScreen({ navigate }: ScreenRenderProps) {
-  const [documentType, setDocumentType] = useState<IdentityDocumentType | null>(null);
-  const [documentNumber, setDocumentNumber] = useState("");
+export function IdentityScreen({
+  backDniPhotoUri,
+  frontDniPhotoUri,
+  navigate,
+  registrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
   const [documentTouched, setDocumentTouched] = useState(false);
   const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const documentType = registrationDraft.documentType;
+  const documentNumber = registrationDraft.documentNumber;
   const expectedLength = documentType === "Carnet de extranjeria" ? 9 : 8;
   const documentLabel = documentType ?? "Seleccionar documento";
   const documentNumberError =
@@ -421,15 +488,31 @@ export function IdentityScreen({ navigate }: ScreenRenderProps) {
   const canContinue = Boolean(documentType) && documentNumber.length === expectedLength;
 
   const handleDocumentTypeSelect = (selectedType: IdentityDocumentType) => {
-    setDocumentType(selectedType);
-    setDocumentNumber("");
+    setRegistrationDraft((currentDraft) => ({
+      ...currentDraft,
+      documentType: selectedType,
+      documentNumber: ""
+    }));
     setDocumentTouched(false);
     setIsDocumentMenuOpen(false);
   };
 
   const handleDocumentNumberChange = (value: string) => {
     setDocumentTouched(true);
-    setDocumentNumber(value.replace(/\D/g, "").slice(0, expectedLength));
+    setRegistrationDraft((currentDraft) => ({
+      ...currentDraft,
+      documentNumber: value.replace(/\D/g, "").slice(0, expectedLength)
+    }));
+  };
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
   };
 
   return (
@@ -441,14 +524,14 @@ export function IdentityScreen({ navigate }: ScreenRenderProps) {
             <Text style={local.personalTitle}>Cedula de identidad</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
 
         <View style={local.identityDocumentPhotoRow}>
-          <IdentityPhotoUpload label="Anverso" onPress={() => navigate("frontDniInstructions")} />
-          <IdentityPhotoUpload label="Reverso" onPress={() => navigate("backDniInstructions")} />
+          <IdentityPhotoUpload label="Anverso" onPress={() => navigate("frontDniInstructions")} photoUri={frontDniPhotoUri} />
+          <IdentityPhotoUpload label="Reverso" onPress={() => navigate("backDniInstructions")} photoUri={backDniPhotoUri} />
         </View>
 
         <View style={local.identityForm}>
@@ -499,7 +582,7 @@ export function IdentityScreen({ navigate }: ScreenRenderProps) {
           <View style={local.personalStepBar} />
         </View>
         <View style={local.identityFooterActions}>
-          <Pressable onPress={() => navigate("personalInformation")} style={local.backButton}>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} style={local.backButton}>
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
             <Text style={local.nextButtonText}>Regresar</Text>
           </Pressable>
@@ -527,65 +610,488 @@ export function IdentityScreen({ navigate }: ScreenRenderProps) {
           </View>
         </Pressable>
       </Modal>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
   );
 }
 
-export function ProfessionalInformationScreen() {
-  return (
-    <RegistrationFrame title="Informacion profesional" step={3} finalLabel="Finalizar registro">
-      <Text style={styles.bodyText}>
-        Completa los detalles de tu especialidad para que los clientes puedan encontrarte
-        facilmente.
-      </Text>
-      <Field label="Oficio" placeholder="Seleccionar una ocupacion" icon="chevron-down" />
-      <Text style={styles.fieldLabel}>Subir certificado (Opcional)</Text>
-      <View style={local.uploadBox}>
-        <Ionicons name="cloud-upload-outline" size={34} color="#1976D2" />
-        <Text style={local.uploadText}>Toca aqui para subir tu certificado o dejalo en blanco</Text>
-      </View>
-      <Text style={styles.captionText}>Los certificados aumentan tus probabilidades de ser contratado.</Text>
-    </RegistrationFrame>
-  );
-}
+export function ProfessionalInformationScreen({
+  navigate,
+  registrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
+  const [isTradeMenuOpen, setIsTradeMenuOpen] = useState(false);
+  const [certificateTouched, setCertificateTouched] = useState(false);
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const trade = registrationDraft.professionalTrade;
+  const certificateUri = registrationDraft.certificateUri;
 
-export function DocumentInstruction({ side }: { side: "FRONTAL" | "TRASERA" }) {
+  const handleTradeSelect = (selectedTrade: ProfessionalTrade) => {
+    setRegistrationDraft((currentDraft) => ({ ...currentDraft, professionalTrade: selectedTrade }));
+    setIsTradeMenuOpen(false);
+  };
+
+  const handlePickCertificate = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setCertificateTouched(true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      mediaTypes: "images",
+      quality: 0.9
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      setRegistrationDraft((currentDraft) => ({ ...currentDraft, certificateUri: result.assets[0].uri }));
+      setCertificateTouched(true);
+    }
+  };
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
   return (
-    <ScreenFrame darkTop>
-      <View style={local.slideCard}>
-        <SectionTitle title="Cedula de identidad" />
-        <Text style={styles.bodyText}>Carga la parte {side} del documento de identificacion</Text>
-        <Text style={styles.bodyText}>Asegurese de que la foto sea legible</Text>
-        <DocumentMock caption="Imagen referencial" />
-        <PrimaryButton label="Tomar Foto" />
-        <SecondaryButton label="Elegir de la galeria" />
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.professionalScreen}>
+        <View style={local.personalHeader}>
+          <View style={local.personalTitleBlock}>
+            <Text style={local.personalTitle}>Informacion profesional</Text>
+            <View style={local.personalTitleUnderline} />
+          </View>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
+        </View>
+
+        <Text style={local.professionalIntro}>
+          Completa los detalles de tu especialidad para que los clientes puedan encontrarte facilmente.
+        </Text>
+
+        <View style={local.professionalCard}>
+          <View style={local.personalFieldBlock}>
+            <Text style={local.personalFieldLabel}>Oficio</Text>
+            <Pressable onPress={() => setIsTradeMenuOpen(true)} style={local.identitySelectShell}>
+              <Text style={[local.identitySelectText, !trade && local.identitySelectPlaceholder]}>
+                {trade ?? "Seleccionar una ocupacion"}
+              </Text>
+              <Ionicons name="chevron-down" size={22} color="#B6BEC9" />
+            </Pressable>
+          </View>
+
+          <View style={local.personalFieldBlock}>
+            <Text style={local.personalFieldLabel}>Subir certificado (Opcional)</Text>
+            <Pressable
+              onPress={handlePickCertificate}
+              style={({ pressed }) => [
+                local.certificateUploadBox,
+                certificateUri && local.certificateUploadBoxFilled,
+                pressed && local.certificateUploadBoxPressed
+              ]}
+            >
+              <Ionicons
+                name={certificateUri ? "checkmark-circle-outline" : "cloud-upload-outline"}
+                size={34}
+                color="#1976D2"
+              />
+              <Text style={[local.certificateUploadText, certificateUri && local.certificateUploadTextFilled]}>
+                {certificateUri
+                  ? "Certificado agregado correctamente"
+                  : "Toca aqui para subir tu certificado o dejalo en blanco si no tienes uno"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={local.professionalInfoRow}>
+            <Ionicons name="information-circle-outline" size={16} color="#4F5965" />
+            <Text style={local.professionalInfoText}>
+              Los certificados aumentan tus probabilidades de ser contratado.
+            </Text>
+          </View>
+          {certificateTouched && !certificateUri ? (
+            <Text style={local.professionalOptionalText}>Puedes continuar sin certificado.</Text>
+          ) : null}
+        </View>
       </View>
+
+      <View style={local.professionalFooter}>
+        <Pressable
+          disabled={!trade}
+          onPress={() => navigate("workerConfirmation")}
+          style={[local.finishRegistrationButton, !trade && local.finishRegistrationButtonDisabled]}
+        >
+          <Text style={[local.finishRegistrationText, !trade && local.nextButtonTextDisabled]}>
+            Finalizar registro
+          </Text>
+        </Pressable>
+        <Text style={local.stepText}>Paso 3 de 3</Text>
+        <View style={local.personalStepRow}>
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+        </View>
+        <Pressable
+          onPress={() => setExitIntent({ action: "back", target: "identity" })}
+          style={[local.backButton, local.professionalBackButton]}
+        >
+          <Ionicons name="play-back" size={15} color="#FFFFFF" />
+          <Text style={local.nextButtonText}>Regresar</Text>
+        </Pressable>
+      </View>
+
+      <Modal animationType="fade" transparent visible={isTradeMenuOpen} onRequestClose={() => setIsTradeMenuOpen(false)}>
+        <Pressable style={local.documentMenuOverlay} onPress={() => setIsTradeMenuOpen(false)}>
+          <View style={local.documentMenuCard}>
+            <Text style={local.documentMenuTitle}>Selecciona tu oficio</Text>
+            {professionalTradeOptions.map((option) => (
+              <Pressable key={option} onPress={() => handleTradeSelect(option)} style={local.documentMenuOption}>
+                <Text style={local.documentMenuOptionText}>{option}</Text>
+                {trade === option ? <Ionicons name="checkmark" size={20} color="#1976D2" /> : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
   );
 }
 
-export function DocumentConfirmation({ side }: { side: "ANVERSO" | "REVERSO" }) {
+export function DocumentInstruction({
+  navigate,
+  setPendingDniPhotoUri,
+  side
+}: ScreenRenderProps & { side: "FRONTAL" | "TRASERA" }) {
+  const isFront = side === "FRONTAL";
+  const confirmationKey = isFront ? "frontDniConfirmation" : "backDniConfirmation";
+  const cameraKey = isFront ? "frontDniCamera" : "backDniCamera";
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
+  const handlePickFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [16, 10],
+      mediaTypes: "images",
+      quality: 0.9
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      setPendingDniPhotoUri(result.assets[0].uri);
+      navigate(confirmationKey);
+    }
+  };
+
   return (
-    <ScreenFrame>
-      <SectionTitle title="Verifica el frente de tu documento" />
-      <Text style={styles.captionText}>Asegurate de que el numero de DNI y tu nombre sean legibles</Text>
-      <View style={local.documentPreview}>
-        <Text style={local.documentPreviewLabel}>{side}</Text>
-        <View style={local.documentPhotoLarge} />
-        <View style={local.fakeLineWide} />
-        <View style={local.fakeLine} />
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.documentInstructionScreen}>
+        <View style={local.personalHeader}>
+          <View style={local.personalTitleBlock}>
+            <Text style={local.personalTitle}>Cedula de identidad</Text>
+            <View style={local.personalTitleUnderline} />
+          </View>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
+        </View>
+
+        <View style={local.documentInstructionBullets}>
+          <InstructionBullet text={`Carga la parte ${side} del documento de identificacion`} />
+          <InstructionBullet text="Asegurese de que la foto sea legible" />
+        </View>
+
+        <View style={local.referenceBlock}>
+          <Text style={local.documentCaption}>Imagen referencial</Text>
+          <DocumentMock side={isFront ? "front" : "back"} />
+        </View>
       </View>
-      <View style={local.validPill}>
-        <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-        <Text style={local.validText}>Documento legible</Text>
+
+      <View style={local.documentInstructionFooter}>
+        <Pressable onPress={() => navigate(cameraKey)} style={local.takeDocumentPhotoButton}>
+          <Text style={local.takeDocumentPhotoText}>Tomar Foto</Text>
+        </Pressable>
+        <Pressable onPress={handlePickFromGallery} style={local.pickDocumentButton}>
+          <Text style={local.pickDocumentButtonText}>Elegir de la galeria</Text>
+        </Pressable>
       </View>
-      <PrimaryButton label="Usar esta foto" />
-      <SecondaryButton label="Tomar otra foto" />
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
+    </ScreenFrame>
+  );
+}
+
+export function DocumentCameraScreen({
+  navigate,
+  setPendingDniPhotoUri,
+  side
+}: ScreenRenderProps & { side: DniSide }) {
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraError, setCameraError] = useState("");
+  const [isTakingPhoto, setIsTakingPhoto] = useState(false);
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const confirmationKey = side === "ANVERSO" ? "frontDniConfirmation" : "backDniConfirmation";
+  const instructionKey = side === "ANVERSO" ? "frontDniInstructions" : "backDniInstructions";
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
+  const handleTakePhoto = async () => {
+    setCameraError("");
+
+    if (!permission?.granted) {
+      const requestedPermission = await requestPermission();
+
+      if (!requestedPermission.granted) {
+        setCameraError("Necesitamos permiso de camara para tomar la foto del documento.");
+        return;
+      }
+    }
+
+    try {
+      setIsTakingPhoto(true);
+      const photo = await cameraRef.current?.takePictureAsync({
+        quality: 0.9,
+        skipProcessing: false
+      });
+
+      if (photo?.uri) {
+        setPendingDniPhotoUri(photo.uri);
+        navigate(confirmationKey);
+      }
+    } catch {
+      setCameraError("No se pudo tomar la foto. Intentalo nuevamente.");
+    } finally {
+      setIsTakingPhoto(false);
+    }
+  };
+
+  return (
+    <View style={local.documentCameraScreen}>
+      {!permission?.granted ? (
+        <View style={local.cameraPermissionPanel}>
+          <Ionicons name="camera-outline" size={44} color="#1976D2" />
+          <Text style={local.cameraPermissionTitle}>Permiso de camara</Text>
+          <Text style={local.cameraPermissionText}>
+            Necesitamos activar la camara para tomar la foto de tu documento.
+          </Text>
+          <Pressable onPress={requestPermission} style={local.cameraPermissionButton}>
+            <Text style={local.cameraPermissionButtonText}>Permitir camara</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={local.documentCameraOverlay}>
+        <Pressable
+          onPress={() => setExitIntent({ action: "back", target: instructionKey })}
+          style={local.cameraCloseButton}
+        >
+          <Ionicons name="close" size={24} color="#FFFFFF" />
+        </Pressable>
+
+        <View style={local.cameraBrand}>
+          <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
+          <Text style={local.cameraBrandText}>Mi Chamba ID</Text>
+        </View>
+
+        <Text style={local.documentCameraTitle}>Ubica la parte {side} dentro del marco</Text>
+        <Text style={local.documentCameraSubtitle}>Evita reflejos y asegurate de que los datos sean legibles</Text>
+
+        <View style={local.documentCameraFrame}>
+          {permission?.granted ? (
+            <View style={local.documentCameraViewport}>
+              <CameraView ref={cameraRef} active facing="back" style={local.documentCameraPreview} />
+            </View>
+          ) : null}
+          <View style={local.documentCameraBorder} />
+          <View style={[local.documentCorner, local.documentCornerTopLeft]} />
+          <View style={[local.documentCorner, local.documentCornerTopRight]} />
+          <View style={[local.documentCorner, local.documentCornerBottomLeft]} />
+          <View style={[local.documentCorner, local.documentCornerBottomRight]} />
+        </View>
+
+        {cameraError ? <Text style={local.cameraLiveErrorText}>{cameraError}</Text> : null}
+
+        <View style={local.cameraActionArea}>
+          <Pressable
+            disabled={isTakingPhoto}
+            onPress={handleTakePhoto}
+            style={[local.cameraCaptureButton, isTakingPhoto && local.cameraCaptureButtonDisabled]}
+          >
+            <View style={local.cameraCaptureInner} />
+          </Pressable>
+          <Text style={local.cameraCaptureLabel}>{isTakingPhoto ? "Tomando foto..." : "Tomar foto"}</Text>
+        </View>
+      </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
+    </View>
+  );
+}
+
+export function DocumentConfirmation({
+  navigate,
+  pendingDniPhotoUri,
+  setBackDniPhotoUri,
+  setFrontDniPhotoUri,
+  setPendingDniPhotoUri,
+  side
+}: ScreenRenderProps & { side: DniSide }) {
+  const isFront = side === "ANVERSO";
+  const cameraKey = isFront ? "frontDniCamera" : "backDniCamera";
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const title = isFront ? "Verifica el frente de tu documento" : "Verifica el reverso de tu documento";
+  const helperText = isFront
+    ? "Asegurate de que el numero de DNI y tu nombre sean legibles"
+    : "Asegurate de que el codigo y los datos posteriores sean legibles";
+
+  const handleUsePhoto = () => {
+    if (!pendingDniPhotoUri) {
+      return;
+    }
+
+    if (isFront) {
+      setFrontDniPhotoUri(pendingDniPhotoUri);
+    } else {
+      setBackDniPhotoUri(pendingDniPhotoUri);
+    }
+
+    setPendingDniPhotoUri(null);
+    navigate("identity");
+  };
+
+  const handleRetakePhoto = () => {
+    setPendingDniPhotoUri(null);
+    navigate(cameraKey);
+  };
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
+  return (
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <View style={local.documentConfirmScreen}>
+        <View style={local.documentConfirmHeader}>
+          <View style={local.personalTitleBlock}>
+            <Text style={local.personalTitle}>{title}</Text>
+            <View style={local.personalTitleUnderline} />
+          </View>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "identity" })} hitSlop={10}>
+            <Ionicons name="close-circle" size={24} color="#111111" />
+          </Pressable>
+        </View>
+
+        <Text style={local.documentConfirmHint}>{helperText}</Text>
+
+        <View style={local.documentPhotoPreviewWrap}>
+          <View style={local.documentSidePill}>
+            <Text style={local.documentSidePillText}>{side}</Text>
+          </View>
+          {pendingDniPhotoUri ? (
+            <Image resizeMode="cover" source={{ uri: pendingDniPhotoUri }} style={local.documentCapturedImage} />
+          ) : (
+            <DocumentMock side={isFront ? "front" : "back"} />
+          )}
+        </View>
+
+        <View style={local.documentValidRow}>
+          <View style={local.photoValidIcon}>
+            <Ionicons name="checkmark" size={15} color="#1976D2" />
+          </View>
+          <Text style={local.documentValidText}>Documento legible</Text>
+        </View>
+      </View>
+
+      <View style={local.documentConfirmFooter}>
+        <Pressable
+          disabled={!pendingDniPhotoUri}
+          onPress={handleUsePhoto}
+          style={[local.usePhotoButton, !pendingDniPhotoUri && local.usePhotoButtonDisabled]}
+        >
+          <Text style={local.usePhotoButtonText}>Usar esta foto</Text>
+        </Pressable>
+        <Pressable onPress={handleRetakePhoto} style={local.retakePhotoButton}>
+          <Text style={local.retakePhotoButtonText}>Tomar otra foto</Text>
+        </Pressable>
+      </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
   );
 }
 
 export function ProfilePhotoInstructionsScreen({ navigate }: ScreenRenderProps) {
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
   return (
     <ScreenFrame noPadding>
       <View style={local.personalTopBand} />
@@ -595,7 +1101,11 @@ export function ProfilePhotoInstructionsScreen({ navigate }: ScreenRenderProps) 
             <Text style={local.personalTitle}>Su foto de perfil</Text>
             <View style={local.personalTitleUnderline} />
           </View>
-          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10} style={local.photoConfirmClose}>
+          <Pressable
+            onPress={() => setExitIntent({ action: "back", target: "personalInformation" })}
+            hitSlop={10}
+            style={local.photoConfirmClose}
+          >
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -637,6 +1147,11 @@ export function ProfilePhotoInstructionsScreen({ navigate }: ScreenRenderProps) 
           <Text style={local.takePhotoText}>Tomar Foto</Text>
         </Pressable>
       </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
   );
 }
@@ -646,6 +1161,17 @@ export function ProfilePhotoCameraScreen({ navigate, setPendingProfilePhotoUri }
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraError, setCameraError] = useState("");
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
 
   const handleTakePhoto = async () => {
     setCameraError("");
@@ -693,7 +1219,10 @@ export function ProfilePhotoCameraScreen({ navigate, setPendingProfilePhotoUri }
       ) : null}
 
       <View style={local.cameraOverlay}>
-        <Pressable onPress={() => navigate("profilePhotoInstructions")} style={local.cameraCloseButton}>
+        <Pressable
+          onPress={() => setExitIntent({ action: "back", target: "profilePhotoInstructions" })}
+          style={local.cameraCloseButton}
+        >
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </Pressable>
 
@@ -727,6 +1256,11 @@ export function ProfilePhotoCameraScreen({ navigate, setPendingProfilePhotoUri }
           <Text style={local.cameraCaptureLabel}>{isTakingPhoto ? "Tomando foto..." : "Tomar foto"}</Text>
         </View>
       </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </View>
   );
 }
@@ -737,6 +1271,8 @@ export function ProfilePhotoConfirmationScreen({
   setPendingProfilePhotoUri,
   setProfilePhotoUri
 }: ScreenRenderProps) {
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+
   const handleUsePhoto = () => {
     if (pendingProfilePhotoUri) {
       setProfilePhotoUri(pendingProfilePhotoUri);
@@ -750,13 +1286,23 @@ export function ProfilePhotoConfirmationScreen({
     navigate("profilePhotoCamera");
   };
 
+  const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { target } = exitIntent;
+    setExitIntent(null);
+    navigate(target);
+  };
+
   return (
     <ScreenFrame noPadding>
       <View style={local.personalTopBand} />
       <View style={local.photoConfirmScreen}>
         <View style={local.photoConfirmHeader}>
           <Text style={local.photoConfirmTitle}>Te gusta tu foto?</Text>
-          <Pressable onPress={() => navigate("personalInformation")} hitSlop={10}>
+          <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} hitSlop={10}>
             <Ionicons name="close-circle" size={24} color="#111111" />
           </Pressable>
         </View>
@@ -793,19 +1339,52 @@ export function ProfilePhotoConfirmationScreen({
           <Text style={local.retakePhotoButtonText}>Tomar otra foto</Text>
         </Pressable>
       </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
     </ScreenFrame>
   );
 }
 
-export function WorkerConfirmationScreen() {
+export function WorkerConfirmationScreen({ navigate, resetRegistrationDraft }: ScreenRenderProps) {
+  const checkScale = useRef(new Animated.Value(0.82)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(checkScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 90,
+        useNativeDriver: true
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 420,
+        useNativeDriver: true
+      })
+    ]).start();
+
+    const redirectTimer = setTimeout(() => {
+      resetRegistrationDraft();
+      navigate("login");
+    }, 2200);
+
+    return () => clearTimeout(redirectTimer);
+  }, [checkScale, contentOpacity, navigate, resetRegistrationDraft]);
+
   return (
-    <ScreenFrame centered>
-      <View style={local.successIcon}>
-        <Ionicons name="checkmark" size={72} color="#FFFFFF" />
-      </View>
-      <Text style={local.successTitle}>Registro exitoso!</Text>
-      <Text style={local.successSubtitle}>A chambear!</Text>
-      <PrimaryButton label="Ir a solicitudes" />
+    <ScreenFrame noPadding>
+      <View style={local.personalTopBand} />
+      <Animated.View style={[local.registrationSuccessScreen, { opacity: contentOpacity }]}>
+        <Text style={local.successTitle}>Registro exitoso!</Text>
+        <Animated.View style={[local.successIcon, { transform: [{ scale: checkScale }] }]}>
+          <Ionicons name="checkmark" size={92} color="#FFFFFF" />
+        </Animated.View>
+        <Text style={local.successSubtitle}>A chambear!</Text>
+      </Animated.View>
     </ScreenFrame>
   );
 }
@@ -820,28 +1399,119 @@ function DocumentUpload({ label }: { label: string }) {
   );
 }
 
-function IdentityPhotoUpload({ label, onPress }: { label: string; onPress: () => void }) {
+function IdentityPhotoUpload({ label, onPress, photoUri }: { label: string; onPress: () => void; photoUri: string | null }) {
   return (
     <View style={local.identityPhotoBlock}>
       <Pressable onPress={onPress} style={({ pressed }) => [local.identityPhotoBox, pressed && local.identityPhotoBoxPressed]}>
-        <Ionicons name="camera-outline" size={28} color="#1976D2" />
-        <Text style={local.avatarText}>Tomar foto</Text>
+        {photoUri ? (
+          <Image resizeMode="cover" source={{ uri: photoUri }} style={local.identityPhotoPreview} />
+        ) : (
+          <>
+            <Ionicons name="camera-outline" size={28} color="#1976D2" />
+            <Text style={local.avatarText}>Tomar foto</Text>
+          </>
+        )}
       </Pressable>
       <Text style={local.identityPhotoLabel}>{label}</Text>
     </View>
   );
 }
 
-function DocumentMock({ caption }: { caption: string }) {
-  return (
-    <View style={local.documentMock}>
-      <Text style={local.documentCaption}>{caption}</Text>
-      <View style={local.documentLines}>
-        <View style={local.documentPhoto} />
-        <View style={local.fakeLineWide} />
-        <View style={local.fakeLine} />
-        <View style={local.fakeLineShort} />
+function DocumentMock({ side }: { side: "front" | "back" }) {
+  if (side === "back") {
+    return (
+      <View style={local.dniMockCard}>
+        <View style={local.dniMinimalGlow} />
+        <View style={local.dniBackTopRow}>
+          <View style={local.dniBackStamp}>
+            <Text style={local.dniBackStampText}>Constancia{"\n"}de Sufragio</Text>
+          </View>
+          <View style={local.dniBackStamp}>
+            <Text style={local.dniBackStampText}>Constancia{"\n"}de Sufragio</Text>
+          </View>
+          <View style={local.dniBackStamp}>
+            <Text style={local.dniBackStampText}>Constancia{"\n"}de Sufragio</Text>
+          </View>
+          <View style={local.dniBackStamp}>
+            <Text style={local.dniBackStampText}>Grupo de{"\n"}Votacion</Text>
+          </View>
+          <View style={local.dniBarcode}>
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineWide]} />
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineNarrow]} />
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineMedium]} />
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineNarrow]} />
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineWide]} />
+            <View style={[local.dniBarcodeLine, local.dniBarcodeLineMedium]} />
+          </View>
+        </View>
+        <View style={local.dniBackInfoRow}>
+          <View style={local.dniChip} />
+          <View style={local.dniBackCopy}>
+            <View style={[local.dniDataLine, local.dniBackLineLong]} />
+            <Text style={local.dniBackText}>AV. LOS ALAMOS 245 - LIMA</Text>
+            <View style={[local.dniDataLine, local.dniBackLineMid]} />
+            <Text style={local.dniBackText}>SOLTERO</Text>
+          </View>
+        </View>
+        <View style={local.dniMrzBlock}>
+          <Text style={local.dniMrzText}>I&lt;PER41326541&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</Text>
+          <Text style={local.dniMrzText}>8709281F2701016PER&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</Text>
+          <Text style={local.dniMrzText}>VARGAS&lt;&lt;GIOVANNA&lt;LORENA&lt;&lt;&lt;&lt;</Text>
+        </View>
       </View>
+    );
+  }
+
+  return (
+    <View style={local.dniMockCard}>
+      <View style={local.dniMinimalGlow} />
+      <View style={local.dniHeaderRow}>
+        <View style={local.dniSeal}>
+          <Text style={local.dniSealPlaceholderText}></Text>
+        </View>
+        <View>
+          <Text style={local.dniCountry}>REPUBLICA DEL PERU</Text>
+          <Text style={local.dniSubtitle}>DOCUMENTO NACIONAL DE</Text>
+          <Text style={local.dniSubtitle}>IDENTIDAD DNI</Text>
+        </View>
+        <View style={local.dniCuiBlock}>
+          <View style={local.dniHeaderLine} />
+          <View style={[local.dniHeaderLine, local.dniHeaderLineShort]} />
+        </View>
+      </View>
+      <View style={local.dniMinimalBody}>
+        <View style={local.dniMinimalLeft}>
+          <Text style={local.dniNumberText}>41326541</Text>
+          <View style={local.dniChipLarge} />
+        </View>
+        <View style={local.dniMinimalCenter}>
+          <View style={[local.dniDataLine, local.dniDataLineShort]} />
+          <View style={local.dniDataLine} />
+          <View style={[local.dniDataLine, local.dniDataLineMid]} />
+          <View style={local.dniDataLine} />
+          <View style={[local.dniDataLine, local.dniDataLineMid]} />
+          <View style={[local.dniDataLine, local.dniDataLineTiny]} />
+        </View>
+        <View style={local.dniMinimalRight}>
+          <View style={local.dniPortraitMinimal}>
+            <Ionicons name="person" size={46} color="#73777C" />
+          </View>
+          <View style={local.dniSignatureMark}>
+            <View style={local.dniSignatureStrokeTall} />
+            <View style={local.dniSignatureStrokeCurve} />
+            <View style={local.dniSignatureDot} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function InstructionBullet({ text }: { text: string }) {
+  return (
+    <View style={local.instructionBulletRow}>
+      <Ionicons name="checkmark-circle" size={21} color="#1976D2" />
+      <Text style={local.instructionBulletText}>{text}</Text>
     </View>
   );
 }
@@ -1052,7 +1722,14 @@ const local = {
   },
   identityPhotoBoxPressed: {
     backgroundColor: "#EAF4FF",
-    transform: [{ scale: 0.98 }]
+    borderColor: "#00A6FF",
+    opacity: 0.82,
+    transform: [{ scale: 0.96 }]
+  },
+  identityPhotoPreview: {
+    width: "100%" as const,
+    height: "100%" as const,
+    borderRadius: 11
   },
   identityPhotoLabel: {
     color: "#09243A",
@@ -1177,6 +1854,674 @@ const local = {
   documentMenuOptionText: {
     color: "#09243A",
     fontSize: 14,
+    fontWeight: "800" as const
+  },
+  professionalScreen: {
+    paddingHorizontal: 15,
+    paddingTop: 14,
+    minHeight: 554
+  },
+  professionalIntro: {
+    color: "#303A45",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "500" as const,
+    marginTop: 18,
+    marginBottom: 36
+  },
+  professionalCard: {
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "#D6DEE8",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 21,
+    paddingTop: 22,
+    paddingBottom: 20,
+    gap: 17
+  },
+  certificateUploadBox: {
+    minHeight: 148,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderStyle: "dashed" as const,
+    borderColor: "#1976D2",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 28,
+    gap: 8
+  },
+  certificateUploadBoxPressed: {
+    backgroundColor: "#EAF4FF",
+    opacity: 0.84,
+    transform: [{ scale: 0.98 }]
+  },
+  certificateUploadBoxFilled: {
+    borderStyle: "solid" as const,
+    backgroundColor: "#F5FBFF"
+  },
+  certificateUploadText: {
+    color: "#B6BEC9",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800" as const,
+    textAlign: "center" as const
+  },
+  certificateUploadTextFilled: {
+    color: "#1976D2"
+  },
+  professionalInfoRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 7,
+    marginTop: -8
+  },
+  professionalInfoText: {
+    flex: 1,
+    color: "#4F5965",
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "600" as const
+  },
+  professionalOptionalText: {
+    color: "#6D7B88",
+    fontSize: 11,
+    fontWeight: "700" as const,
+    marginTop: -10
+  },
+  professionalFooter: {
+    minHeight: 124,
+    borderTopWidth: 1,
+    borderTopColor: "#CFD5DD",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 10,
+    paddingHorizontal: 14,
+    position: "relative" as const
+  },
+  finishRegistrationButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 14
+  },
+  finishRegistrationButtonDisabled: {
+    backgroundColor: "#D6DEE8"
+  },
+  finishRegistrationText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900" as const
+  },
+  professionalBackButton: {
+    alignSelf: "flex-start" as const,
+    marginTop: 9
+  },
+  documentInstructionScreen: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    minHeight: 590
+  },
+  documentInstructionBullets: {
+    gap: 14,
+    marginTop: 32
+  },
+  instructionBulletRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12
+  },
+  instructionBulletText: {
+    flex: 1,
+    color: "#09243A",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "800" as const
+  },
+  referenceBlock: {
+    alignItems: "center" as const,
+    marginTop: 86
+  },
+  documentInstructionFooter: {
+    minHeight: 144,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 22,
+    gap: 8
+  },
+  takeDocumentPhotoButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  takeDocumentPhotoText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900" as const
+  },
+  pickDocumentButton: {
+    minHeight: 44,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#1677F2",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  pickDocumentButtonText: {
+    color: "#09243A",
+    fontSize: 14,
+    fontWeight: "800" as const
+  },
+  documentCameraScreen: {
+    flex: 1,
+    minHeight: 744,
+    backgroundColor: "#2F343A"
+  },
+  documentCameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(20, 24, 28, 0.78)",
+    alignItems: "center" as const,
+    paddingHorizontal: 18,
+    paddingTop: 32,
+    paddingBottom: 30
+  },
+  documentCameraTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "900" as const,
+    textAlign: "center" as const,
+    marginTop: 52
+  },
+  documentCameraSubtitle: {
+    color: "#EAF2FA",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center" as const,
+    marginTop: 8,
+    maxWidth: 260
+  },
+  documentCameraFrame: {
+    width: 330,
+    height: 238,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const,
+    marginTop: 74
+  },
+  documentCameraViewport: {
+    width: 306,
+    height: 194,
+    borderRadius: 14,
+    overflow: "hidden" as const,
+    backgroundColor: "#20252B"
+  },
+  documentCameraPreview: {
+    width: "100%" as const,
+    height: "100%" as const
+  },
+  documentCameraBorder: {
+    position: "absolute" as const,
+    width: 306,
+    height: 194,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderStyle: "dashed" as const,
+    borderColor: "#12D1C4"
+  },
+  documentCorner: {
+    position: "absolute" as const,
+    width: 38,
+    height: 38,
+    borderColor: "#00A6FF"
+  },
+  documentCornerTopLeft: {
+    top: 10,
+    left: 0,
+    borderTopWidth: 5,
+    borderLeftWidth: 5,
+    borderTopLeftRadius: 16
+  },
+  documentCornerTopRight: {
+    top: 10,
+    right: 0,
+    borderTopWidth: 5,
+    borderRightWidth: 5,
+    borderTopRightRadius: 16
+  },
+  documentCornerBottomLeft: {
+    bottom: 10,
+    left: 0,
+    borderBottomWidth: 5,
+    borderLeftWidth: 5,
+    borderBottomLeftRadius: 16
+  },
+  documentCornerBottomRight: {
+    bottom: 10,
+    right: 0,
+    borderBottomWidth: 5,
+    borderRightWidth: 5,
+    borderBottomRightRadius: 16
+  },
+  documentConfirmScreen: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    minHeight: 548
+  },
+  documentConfirmHeader: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    justifyContent: "space-between" as const
+  },
+  documentConfirmHint: {
+    color: "#303A45",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600" as const,
+    marginTop: 16
+  },
+  documentPhotoPreviewWrap: {
+    marginTop: 86,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const
+  },
+  documentSidePill: {
+    position: "absolute" as const,
+    left: 24,
+    top: -18,
+    zIndex: 2,
+    borderRadius: 11,
+    backgroundColor: "#1976D2",
+    paddingHorizontal: 14,
+    paddingVertical: 6
+  },
+  documentSidePillText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900" as const
+  },
+  documentCapturedImage: {
+    width: 320,
+    height: 202,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#C8D0D9",
+    backgroundColor: "#F8FBFD"
+  },
+  documentValidRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    marginTop: 24
+  },
+  documentValidText: {
+    color: "#00A6FF",
+    fontSize: 15,
+    fontWeight: "600" as const
+  },
+  documentConfirmFooter: {
+    minHeight: 158,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    gap: 14,
+    backgroundColor: "#FFFFFF"
+  },
+  dniMockCard: {
+    width: 320,
+    minHeight: 198,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#B7C2CE",
+    backgroundColor: "#F8FCFE",
+    overflow: "hidden" as const,
+    padding: 7,
+    position: "relative" as const
+  },
+  dniMinimalGlow: {
+    position: "absolute" as const,
+    left: 76,
+    bottom: 20,
+    width: 146,
+    height: 110,
+    borderRadius: 60,
+    backgroundColor: "rgba(129, 224, 231, 0.24)"
+  },
+  dniHeaderLine: {
+    width: 118,
+    height: 5,
+    borderRadius: 2,
+    backgroundColor: "#A7B3BE"
+  },
+  dniHeaderLineShort: {
+    width: 104,
+    marginTop: 8
+  },
+  dniMinimalBody: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    position: "relative" as const,
+    paddingTop: 14,
+    gap: 14
+  },
+  dniMinimalLeft: {
+    width: 78,
+    alignItems: "center" as const,
+    gap: 14
+  },
+  dniNumberText: {
+    alignSelf: "flex-start" as const,
+    color: "#111820",
+    fontSize: 9,
+    fontWeight: "900" as const
+  },
+  dniChipLarge: {
+    width: 58,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: "#D9AA55",
+    borderWidth: 1,
+    borderColor: "#C99743"
+  },
+  dniMinimalCenter: {
+    flex: 1,
+    gap: 13,
+    paddingTop: 12
+  },
+  dniDataLine: {
+    height: 7,
+    width: 88,
+    borderRadius: 2,
+    backgroundColor: "#AEB8C2"
+  },
+  dniDataLineShort: {
+    width: 58
+  },
+  dniDataLineMid: {
+    width: 76
+  },
+  dniDataLineTiny: {
+    width: 38
+  },
+  dniMinimalRight: {
+    width: 72,
+    alignItems: "center" as const,
+    gap: 18,
+    paddingTop: 2
+  },
+  dniPortraitMinimal: {
+    width: 70,
+    height: 72,
+    borderRadius: 2,
+    backgroundColor: "#EEF0F2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  dniSignatureMark: {
+    width: 38,
+    height: 30,
+    position: "relative" as const
+  },
+  dniSignatureStrokeTall: {
+    position: "absolute" as const,
+    left: 13,
+    top: 1,
+    width: 3,
+    height: 26,
+    borderRadius: 2,
+    backgroundColor: "#9AA2AA",
+    transform: [{ rotate: "-12deg" }]
+  },
+  dniSignatureStrokeCurve: {
+    position: "absolute" as const,
+    left: 10,
+    top: 12,
+    width: 24,
+    height: 15,
+    borderLeftWidth: 3,
+    borderBottomWidth: 3,
+    borderColor: "#9AA2AA",
+    borderBottomLeftRadius: 14,
+    transform: [{ rotate: "-24deg" }]
+  },
+  dniSignatureDot: {
+    position: "absolute" as const,
+    right: 3,
+    top: 13,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#9AA2AA"
+  },
+  dniWatermarkCircle: {
+    position: "absolute" as const,
+    right: 86,
+    bottom: 18,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: "rgba(199, 231, 244, 0.52)"
+  },
+  dniWatermarkBand: {
+    position: "absolute" as const,
+    left: 104,
+    bottom: 0,
+    width: 112,
+    height: 128,
+    backgroundColor: "rgba(188, 227, 240, 0.26)",
+    transform: [{ rotate: "-18deg" }]
+  },
+  dniHeaderRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#C8D0D9",
+    paddingBottom: 4
+  },
+  dniSeal: {
+    width: 30,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderStyle: "dashed" as const,
+    borderColor: "#9AA6B2",
+    backgroundColor: "#F1F4F8",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  dniSealPlaceholderText: {
+    color: "#6D7B88",
+    fontSize: 8,
+    fontWeight: "900" as const
+  },
+  dniCountry: {
+    color: "#111820",
+    fontSize: 13,
+    fontWeight: "900" as const
+  },
+  dniSubtitle: {
+    color: "#4F5965",
+    fontSize: 6,
+    fontWeight: "800" as const
+  },
+  dniCuiBlock: {
+    marginLeft: "auto" as const,
+    alignItems: "flex-end" as const
+  },
+  dniMiniLabel: {
+    color: "#66717E",
+    fontSize: 6.5,
+    fontWeight: "900" as const
+  },
+  dniCuiText: {
+    color: "#29313A",
+    fontSize: 14,
+    fontWeight: "900" as const
+  },
+  dniBodyRow: {
+    flexDirection: "row" as const,
+    gap: 8,
+    paddingTop: 10
+  },
+  dniLeftPanel: {
+    alignItems: "center" as const,
+    gap: 3
+  },
+  dniPortrait: {
+    width: 78,
+    height: 88,
+    borderRadius: 4,
+    backgroundColor: "#E8EDF2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  dniSignatureLine: {
+    width: 44,
+    height: 1,
+    backgroundColor: "#29313A",
+    marginTop: 1
+  },
+  dniSignatureText: {
+    color: "#29313A",
+    fontSize: 6,
+    fontWeight: "900" as const
+  },
+  dniData: {
+    flex: 1,
+    gap: 1,
+    zIndex: 1
+  },
+  dniStrongText: {
+    color: "#29313A",
+    fontSize: 8.5,
+    fontWeight: "900" as const
+  },
+  dniTinyText: {
+    color: "#303A45",
+    fontSize: 7.4,
+    fontWeight: "800" as const
+  },
+  dniDataGrid: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    marginTop: 3,
+    gap: 7
+  },
+  dniRightPanel: {
+    width: 48,
+    alignItems: "center" as const,
+    gap: 9
+  },
+  dniSmallPortrait: {
+    width: 44,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E8EDF2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  dniCameraMark: {
+    width: 26,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: "#9B4E93",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  dniBackTopRow: {
+    flexDirection: "row" as const,
+    gap: 4,
+    alignItems: "stretch" as const,
+    position: "relative" as const,
+    zIndex: 1
+  },
+  dniBackStamp: {
+    flex: 1,
+    minHeight: 36,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#C7D0D9",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "rgba(255, 255, 255, 0.78)"
+  },
+  dniBackStampText: {
+    color: "#4E5A65",
+    fontSize: 5.5,
+    lineHeight: 7.5,
+    textAlign: "center" as const,
+    fontWeight: "800" as const
+  },
+  dniBarcode: {
+    width: 20,
+    minHeight: 36,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.72)",
+    borderWidth: 1,
+    borderColor: "#C7D0D9",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 2
+  },
+  dniBarcodeLine: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "#343A40"
+  },
+  dniBarcodeLineNarrow: {
+    width: 2
+  },
+  dniBarcodeLineMedium: {
+    width: 4
+  },
+  dniBarcodeLineWide: {
+    width: 6
+  },
+  dniBackInfoRow: {
+    flexDirection: "row" as const,
+    gap: 13,
+    marginTop: 16,
+    alignItems: "center" as const,
+    position: "relative" as const,
+    zIndex: 1
+  },
+  dniChip: {
+    width: 58,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#D9AA55",
+    borderWidth: 1,
+    borderColor: "#C99743"
+  },
+  dniBackCopy: {
+    flex: 1,
+    gap: 5
+  },
+  dniBackLineLong: {
+    width: 142
+  },
+  dniBackLineMid: {
+    width: 92
+  },
+  dniBackText: {
+    color: "#26313B",
+    fontSize: 8,
+    fontWeight: "900" as const
+  },
+  dniMrzBlock: {
+    marginTop: 18,
+    gap: 3,
+    position: "relative" as const,
+    zIndex: 1
+  },
+  dniMrzText: {
+    color: "#111820",
+    fontSize: 10.8,
+    letterSpacing: 0.7,
     fontWeight: "800" as const
   },
   calendarOverlay: {
@@ -1761,7 +3106,22 @@ const local = {
   selfieGuide: { height: 260, borderRadius: 8, borderWidth: 2, borderColor: "#021B30", alignItems: "center" as const, justifyContent: "center" as const, backgroundColor: "#F8FAFC" },
   selfieCircle: { width: 160, height: 160, borderRadius: 80, backgroundColor: "#021B30", alignItems: "center" as const, justifyContent: "center" as const },
   facePreview: { width: 220, height: 220, borderRadius: 110, backgroundColor: "#021B30", alignItems: "center" as const, justifyContent: "center" as const, alignSelf: "center" as const, marginTop: 44 },
-  successIcon: { width: 132, height: 132, borderRadius: 66, backgroundColor: "#22C55E", alignItems: "center" as const, justifyContent: "center" as const, marginBottom: 22 },
+  registrationSuccessScreen: {
+    flex: 1,
+    minHeight: 690,
+    alignItems: "center" as const,
+    paddingTop: 86
+  },
+  successIcon: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginTop: 76,
+    marginBottom: 92
+  },
   successTitle: { color: "#021B30", fontSize: 20, fontWeight: "900" as const, textAlign: "center" as const },
-  successSubtitle: { color: "#021B30", fontSize: 20, fontWeight: "900" as const, marginBottom: 28 }
+  successSubtitle: { color: "#021B30", fontSize: 20, fontWeight: "900" as const }
 };

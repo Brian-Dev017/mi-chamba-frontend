@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -213,6 +214,44 @@ export function MapPreview() {
   );
 }
 
+export function ConfirmationDialog({
+  cancelLabel = "Continuar registro",
+  confirmLabel,
+  message,
+  onCancel,
+  onConfirm,
+  title,
+  visible
+}: {
+  cancelLabel?: string;
+  confirmLabel: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+  visible: boolean;
+}) {
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
+      <View style={styles.confirmOverlay}>
+        <View style={styles.confirmCard}>
+          <View style={styles.confirmIconWrap}>
+            <Ionicons name="alert-circle-outline" size={30} color={palette.red} />
+          </View>
+          <Text style={styles.confirmTitle}>{title}</Text>
+          <Text style={styles.confirmMessage}>{message}</Text>
+          <Pressable onPress={onConfirm} style={styles.confirmDangerButton}>
+            <Text style={styles.confirmDangerText}>{confirmLabel}</Text>
+          </Pressable>
+          <Pressable onPress={onCancel} style={styles.confirmKeepButton}>
+            <Text style={styles.confirmKeepText}>{cancelLabel}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export { Ionicons, palette };
 
 export const styles = StyleSheet.create({
@@ -324,5 +363,69 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8
   },
-  mapLink: { color: palette.blue, fontSize: 14, fontWeight: "900" }
+  mapLink: { color: palette.blue, fontSize: 14, fontWeight: "900" },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(2, 27, 48, 0.52)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24
+  },
+  confirmCard: {
+    width: "100%",
+    borderRadius: 24,
+    backgroundColor: palette.white,
+    padding: 20,
+    alignItems: "center",
+    gap: 12
+  },
+  confirmIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: palette.softRed,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  confirmTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  confirmMessage: {
+    color: palette.inkSoft,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center"
+  },
+  confirmDangerButton: {
+    width: "100%",
+    minHeight: 44,
+    borderRadius: 22,
+    backgroundColor: palette.red,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4
+  },
+  confirmDangerText: {
+    color: palette.white,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  confirmKeepButton: {
+    width: "100%",
+    minHeight: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  confirmKeepText: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: "800"
+  }
 });

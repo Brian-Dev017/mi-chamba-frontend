@@ -5,6 +5,7 @@ import {
   ProfileSelectionScreen
 } from "../screens/auth/AuthScreens";
 import {
+  DocumentCameraScreen,
   DocumentConfirmation,
   DocumentInstruction,
   IdentityScreen,
@@ -49,25 +50,37 @@ export const screenRegistry: ScreenDefinition[] = [
     key: "frontDniInstructions",
     title: "Cedula Anverso",
     group: "Verificacion",
-    render: () => <DocumentInstruction side="FRONTAL" />
+    render: (props) => <DocumentInstruction {...props} side="FRONTAL" />
   },
   {
     key: "backDniInstructions",
     title: "Cedula Reverso",
     group: "Verificacion",
-    render: () => <DocumentInstruction side="TRASERA" />
+    render: (props) => <DocumentInstruction {...props} side="TRASERA" />
+  },
+  {
+    key: "frontDniCamera",
+    title: "Camara Anverso DNI",
+    group: "Verificacion",
+    render: (props) => <DocumentCameraScreen {...props} side="ANVERSO" />
+  },
+  {
+    key: "backDniCamera",
+    title: "Camara Reverso DNI",
+    group: "Verificacion",
+    render: (props) => <DocumentCameraScreen {...props} side="REVERSO" />
   },
   {
     key: "frontDniConfirmation",
     title: "Confirmacion Anverso DNI",
     group: "Verificacion",
-    render: () => <DocumentConfirmation side="ANVERSO" />
+    render: (props) => <DocumentConfirmation {...props} side="ANVERSO" />
   },
   {
     key: "backDniConfirmation",
     title: "Confirmacion Reverso DNI",
     group: "Verificacion",
-    render: () => <DocumentConfirmation side="REVERSO" />
+    render: (props) => <DocumentConfirmation {...props} side="REVERSO" />
   },
   {
     key: "profilePhotoInstructions",
