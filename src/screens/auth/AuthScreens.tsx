@@ -313,7 +313,7 @@ function RoleCard({
 const local = {
   loginTopBand: {
     height: 42,
-    marginTop: 18,
+    marginTop: 34,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -396,7 +396,7 @@ const local = {
   registerLink: { color: "#006FE6", fontSize: 15, fontWeight: "800" as const },
   profileTopBand: {
     height: 42,
-    marginTop: 18,
+    marginTop: 34,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -502,7 +502,7 @@ const local = {
   profileContinueTextDisabled: { color: "#6D7B88" },
   loadingTopBand: {
     height: 42,
-    marginTop: 18,
+    marginTop: 34,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14

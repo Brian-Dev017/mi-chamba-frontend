@@ -288,11 +288,13 @@ export function ClientPersonalInformationScreen({
       </KeyboardAvoidingView>
 
       <View style={local.personalFooter}>
-        <Text style={local.stepText}>Paso 1 de 3</Text>
-        <View style={local.personalStepRow}>
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={local.personalStepBar} />
-          <View style={local.personalStepBar} />
+        <View style={local.singleActionStepBlock}>
+          <Text style={local.stepText}>Paso 1 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={local.personalStepBar} />
+            <View style={local.personalStepBar} />
+          </View>
         </View>
         <Pressable
           disabled={!canContinue}
@@ -468,11 +470,13 @@ export function ClientLocationScreen({
       </KeyboardAvoidingView>
 
       <View style={local.identityFooter}>
-        <Text style={local.stepText}>Paso 2 de 3</Text>
-        <View style={local.personalStepRow}>
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={local.personalStepBar} />
+        <View style={local.dualActionStepBlock}>
+          <Text style={local.stepText}>Paso 2 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={local.personalStepBar} />
+          </View>
         </View>
         <View style={local.identityFooterActions}>
           <Pressable onPress={() => setExitIntent({ action: "back", target: "clientPersonalInformation" })} style={local.backButton}>
@@ -667,11 +671,13 @@ export function PersonalInformationScreen({
       </KeyboardAvoidingView>
 
       <View style={local.personalFooter}>
-        <Text style={local.stepText}>Paso 1 de 3</Text>
-        <View style={local.personalStepRow}>
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={local.personalStepBar} />
-          <View style={local.personalStepBar} />
+        <View style={local.singleActionStepBlock}>
+          <Text style={local.stepText}>Paso 1 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={local.personalStepBar} />
+            <View style={local.personalStepBar} />
+          </View>
         </View>
         <Pressable
           disabled={!canContinue}
@@ -999,12 +1005,14 @@ export function IdentityScreen({
         </View>
       </View>
 
-      <View style={local.identityFooter}>
-        <Text style={local.stepText}>Paso 2 de 3</Text>
-        <View style={local.personalStepRow}>
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={local.personalStepBar} />
+      <View style={[local.identityFooter, local.workerIdentityFooter]}>
+        <View style={local.dualActionStepBlock}>
+          <Text style={local.stepText}>Paso 2 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={local.personalStepBar} />
+          </View>
         </View>
         <View style={local.identityFooterActions}>
           <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} style={local.backButton}>
@@ -1174,11 +1182,13 @@ export function ProfessionalInformationScreen({
             Finalizar registro
           </Text>
         </Pressable>
-        <Text style={local.stepText}>Paso 3 de 3</Text>
-        <View style={local.personalStepRow}>
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          <View style={[local.personalStepBar, local.personalStepBarActive]} />
+        <View style={local.dualActionStepBlock}>
+          <Text style={local.stepText}>Paso 3 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          </View>
         </View>
         <Pressable
           onPress={() => setExitIntent({ action: "back", target: "identity" })}
@@ -1961,7 +1971,7 @@ function PhotoBullet({ text }: { text: string }) {
 const local = {
   personalTopBand: {
     height: 42,
-    marginTop: 18,
+    marginTop: 34,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -2292,14 +2302,29 @@ const local = {
     marginTop: -14
   },
   personalFooter: {
-    minHeight: 86,
-    borderTopWidth: 1,
-    borderTopColor: "#CFD5DD",
-    backgroundColor: "#FFFFFF",
-    paddingTop: 10,
-    paddingHorizontal: 20,
-    position: "relative" as const
-  },
+      minHeight: 124,
+      borderTopWidth: 1,
+      borderTopColor: "#CFD5DD",
+      backgroundColor: "#FFFFFF",
+      paddingTop: 10,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      position: "relative" as const
+    },
+  singleActionStepBlock: {
+      position: "absolute" as const,
+      left: 0,
+      right: 0,
+      top: 10,
+      alignItems: "center" as const
+    },
+  dualActionStepBlock: {
+      position: "absolute" as const,
+      left: 0,
+      right: 0,
+      top: 10,
+      alignItems: "center" as const
+    },
   stepText: {
     color: "#25364A",
     fontSize: 12,
@@ -2319,13 +2344,14 @@ const local = {
   },
   personalStepBarActive: { backgroundColor: "#1976D2" },
   nextButton: {
-    position: "absolute" as const,
-    right: 20,
-    top: 30,
-    minHeight: 30,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "#00A6FF",
+      position: "absolute" as const,
+      right: 20,
+      bottom: 58,
+      minHeight: 34,
+      minWidth: 94,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#00A6FF",
     backgroundColor: "#021B30",
     paddingHorizontal: 12,
     flexDirection: "row" as const,
@@ -2436,27 +2462,32 @@ const local = {
     fontWeight: "600" as const
   },
   identityFooter: {
-    minHeight: 86,
-    borderTopWidth: 1,
-    borderTopColor: "#CFD5DD",
-    backgroundColor: "#FFFFFF",
-    paddingTop: 10,
-    paddingHorizontal: 20,
-    position: "relative" as const
-  },
+      minHeight: 124,
+      borderTopWidth: 1,
+      borderTopColor: "#CFD5DD",
+      backgroundColor: "#FFFFFF",
+      paddingTop: 10,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      position: "relative" as const
+    },
+  workerIdentityFooter: {
+      marginTop: 26
+    },
   identityFooterActions: {
-    position: "absolute" as const,
-    left: 20,
-    right: 20,
-    top: 28,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "space-between" as const
-  },
-  backButton: {
-    minHeight: 32,
-    borderRadius: 17,
-    borderWidth: 1,
+      position: "absolute" as const,
+      left: 20,
+      right: 20,
+      bottom: 58,
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const
+    },
+    backButton: {
+      minHeight: 34,
+      minWidth: 92,
+      borderRadius: 18,
+      borderWidth: 1,
     borderColor: "#00A6FF",
     backgroundColor: "#021B30",
     paddingHorizontal: 12,
@@ -2466,10 +2497,11 @@ const local = {
     gap: 4
   },
   identityNextButton: {
-    minHeight: 32,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "#00A6FF",
+      minHeight: 34,
+      minWidth: 94,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#00A6FF",
     backgroundColor: "#021B30",
     paddingHorizontal: 12,
     flexDirection: "row" as const,
@@ -2583,38 +2615,43 @@ const local = {
     marginTop: -10
   },
   professionalFooter: {
-    minHeight: 86,
-    borderTopWidth: 1,
-    borderTopColor: "#CFD5DD",
-    backgroundColor: "#FFFFFF",
-    paddingTop: 10,
-    paddingHorizontal: 14,
-    position: "relative" as const
-  },
+      marginTop: 24,
+      minHeight: 140,
+      borderTopWidth: 1,
+      borderTopColor: "#CFD5DD",
+      backgroundColor: "#FFFFFF",
+      paddingTop: 10,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      position: "relative" as const
+    },
   finishRegistrationButton: {
-    position: "absolute" as const,
-    right: 14,
-    top: 28,
-    minHeight: 34,
-    borderRadius: 24,
-    backgroundColor: "#021B30",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    paddingHorizontal: 14
-  },
+      position: "absolute" as const,
+      right: 20,
+      bottom: 58,
+      minHeight: 34,
+      minWidth: 96,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#00A6FF",
+      backgroundColor: "#021B30",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      paddingHorizontal: 12
+    },
   finishRegistrationButtonDisabled: {
     backgroundColor: "#D6DEE8"
   },
   finishRegistrationText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900" as const
-  },
-  professionalBackButton: {
-    position: "absolute" as const,
-    left: 14,
-    top: 28
-  },
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "700" as const
+    },
+    professionalBackButton: {
+      position: "absolute" as const,
+      left: 20,
+      bottom: 58
+    },
   documentInstructionScreen: {
     paddingHorizontal: 20,
     paddingTop: 14,
