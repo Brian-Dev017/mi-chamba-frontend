@@ -86,6 +86,8 @@ export type ScreenRenderProps = {
   registerWorker: () => void;
   authenticatedWorker: RegisteredWorker | null;
   setAuthenticatedWorker: (worker: RegisteredWorker | null) => void;
+  workerRequests: WorkerJob[];
+  setWorkerRequests: Dispatch<SetStateAction<WorkerJob[]>>;
 };
 
 export type WorkerJob = {

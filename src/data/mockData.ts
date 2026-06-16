@@ -1,5 +1,35 @@
 import type { Review, ServiceRequestDetail, WorkerJob } from "../types/domain";
 
+export const workerRequests: WorkerJob[] = [
+  {
+    id: "request-001",
+    title: "Instalacion de tomacorrientes",
+    category: "Electricidad",
+    location: "San Isidro, Lima",
+    price: "S/ 85.00",
+    time: "Hace 5 min",
+    status: "NUEVO"
+  },
+  {
+    id: "request-002",
+    title: "Instalacion de tomacorrientes",
+    category: "Electricidad",
+    location: "Chongoyape, Lambayeque",
+    price: "S/ 85.00",
+    time: "Hace 20 min",
+    status: "NUEVO"
+  },
+  {
+    id: "request-003",
+    title: "Arreglo de lavatorio",
+    category: "Gasfitero",
+    location: "La Molina, Lima",
+    price: "S/ 85.00",
+    time: "Hace 25 min",
+    status: "NUEVO"
+  }
+];
+
 export const workerJobs: WorkerJob[] = [
   {
     id: "job-001",

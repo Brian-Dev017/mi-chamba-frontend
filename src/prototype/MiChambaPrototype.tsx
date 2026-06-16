@@ -1,8 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useMemo, useState } from "react";
-import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
+import { workerRequests as initialWorkerRequests } from "../data/mockData";
 import type { RegisteredWorker, RegistrationDraft, ScreenKey } from "../types/domain";
 
 const initialRegistrationDraft: RegistrationDraft = {
@@ -33,6 +35,7 @@ export default function MiChambaPrototype() {
   const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
   const [registeredWorkers, setRegisteredWorkers] = useState<RegisteredWorker[]>([]);
   const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
+  const [workerRequests, setWorkerRequests] = useState(initialWorkerRequests);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
@@ -99,61 +102,69 @@ export default function MiChambaPrototype() {
     registeredWorkers,
     registerWorker,
     authenticatedWorker,
-    setAuthenticatedWorker
+    setAuthenticatedWorker,
+    workerRequests,
+    setWorkerRequests
   };
 
   if (Platform.OS !== "web") {
     return (
-      <SafeAreaView style={styles.nativeShell}>
-        <StatusBar style="dark" />
-        <View style={styles.nativeScreen}>
-          <ActiveScreen {...screenProps} />
-        </View>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView edges={["top", "right", "bottom", "left"]} style={styles.nativeShell}>
+          <StatusBar style="dark" />
+          <View style={styles.nativeScreen}>
+            <ActiveScreen {...screenProps} />
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaView style={styles.shell}>
-      <StatusBar style="dark" />
-      <View style={styles.previewHeader}>
-        <View>
-          <Text style={styles.previewEyebrow}>MI CHAMBA / Alta fidelidad</Text>
-          <Text style={styles.previewTitle}>{activeScreen.title}</Text>
+    <SafeAreaProvider>
+      <SafeAreaView edges={["top", "right", "bottom", "left"]} style={styles.shell}>
+        <StatusBar style="dark" />
+        <View style={styles.previewHeader}>
+          <View>
+            <Text style={styles.previewEyebrow}>MI CHAMBA / Alta fidelidad</Text>
+            <Text style={styles.previewTitle}>{activeScreen.title}</Text>
+          </View>
+          <Text style={styles.previewCount}>
+            {screens.findIndex((screen) => screen.key === activeKey) + 1}/{screens.length}
+          </Text>
         </View>
-        <Text style={styles.previewCount}>
-          {screens.findIndex((screen) => screen.key === activeKey) + 1}/{screens.length}
-        </Text>
-      </View>
 
-      <View style={styles.phoneStage}>
-        <View style={styles.phone}>
-          <ActiveScreen {...screenProps} />
+        <View style={styles.phoneStage}>
+          <View style={styles.phone}>
+            <View style={styles.phoneViewport}>
+              <ActiveScreen {...screenProps} />
+            </View>
+          </View>
         </View>
-      </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.screenRail}
-      >
-        {screens.map((screen) => (
-          <Pressable
-            key={screen.key}
-            onPress={() => setActiveKey(screen.key)}
-            style={[styles.screenChip, activeKey === screen.key && styles.screenChipActive]}
-          >
-            <Text
-              numberOfLines={1}
-              style={[styles.screenChipText, activeKey === screen.key && styles.screenChipTextActive]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.screenRail}
+        >
+          {screens.map((screen) => (
+            <Pressable
+              key={screen.key}
+              onPress={() => setActiveKey(screen.key)}
+              style={[styles.screenChip, activeKey === screen.key && styles.screenChipActive]}
             >
-              {screen.title}
-            </Text>
-            <Text style={styles.screenChipGroup}>{screen.group}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+              <Text
+                numberOfLines={1}
+                style={[styles.screenChipText, activeKey === screen.key && styles.screenChipTextActive]}
+              >
+                {screen.title}
+              </Text>
+              <Text style={styles.screenChipGroup}>{screen.group}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -212,6 +223,15 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 14 },
     elevation: 8
+  },
+  phoneViewport: {
+    flex: 1,
+    marginTop: 12,
+    marginBottom: 18,
+    marginHorizontal: 0,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: palette.white
   },
   screenRail: {
     paddingHorizontal: 12,

@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { palette } from "../theme/palette";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -62,35 +63,57 @@ export function ScreenFrame({
 
 export function WorkerShell({
   active,
-  children
+  children,
+  onNavigate,
+  showNavigation = true
 }: {
   active: "Solicitudes" | "Mis Trabajos" | "Perfil";
   children: ReactNode;
+  onNavigate?: (item: "Solicitudes" | "Mis Trabajos" | "Perfil") => void;
+  showNavigation?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
+  const topInset = -2;
+  const contentBottomInset = showNavigation
+    ? 118 + Math.max(insets.bottom, 12)
+    : -20 + Math.max(insets.bottom, 24);
+  const navBottomInset = Math.max(insets.bottom, 12);
+
   return (
     <View style={styles.workerScreen}>
+      <View style={[styles.workerTopBand, { marginTop: topInset }]} />
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.workerContent}>{children}</View>
+        <View
+          style={[
+            styles.workerContent,
+            !showNavigation && styles.workerContentWithoutNav,
+            { paddingBottom: contentBottomInset }
+          ]}
+        >
+          {children}
+        </View>
       </ScrollView>
-      <View style={styles.bottomNav}>
-        {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
-          <View key={item} style={styles.navItem}>
-            {active === item && <View style={styles.navActiveLine} />}
-            <Ionicons
-              name={
-                item === "Solicitudes"
-                  ? "list-outline"
-                  : item === "Mis Trabajos"
-                    ? "briefcase-outline"
-                    : "person-outline"
-              }
-              size={20}
-              color={active === item ? palette.blue : palette.muted}
-            />
-            <Text style={[styles.navText, active === item && styles.navTextActive]}>{item}</Text>
-          </View>
-        ))}
-      </View>
+      {showNavigation ? (
+        <View style={[styles.bottomNav, { paddingBottom: navBottomInset, minHeight: 56 + navBottomInset + 20 }]}>
+          {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
+            <Pressable key={item} onPress={() => onNavigate?.(item)} style={[styles.navItem, active === item && styles.navItemActive]}>
+              {active === item && <View style={styles.navActiveLine} />}
+              <Ionicons
+                name={
+                  item === "Solicitudes"
+                    ? "list-outline"
+                    : item === "Mis Trabajos"
+                      ? "briefcase-outline"
+                      : "person-outline"
+                }
+                size={20}
+                color={active === item ? palette.ink : palette.muted}
+              />
+              <Text style={[styles.navText, active === item && styles.navTextActive]}>{item}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -291,22 +314,42 @@ export const styles = StyleSheet.create({
   gradientScreen: { backgroundColor: palette.ink },
   darkTopScreen: { backgroundColor: palette.ink },
   workerScreen: { flex: 1, backgroundColor: palette.paper },
-  workerContent: { padding: 20, paddingBottom: 106, gap: 16 },
+  workerTopBand: {
+    height: 45,
+    backgroundColor: palette.ink,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16
+  },
+  workerContent: { padding: 16, paddingBottom: 118, gap: 14 },
+  workerContentWithoutNav: { paddingBottom: 45 },
   bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 78,
+    minHeight: 88,
     backgroundColor: palette.white,
     borderTopWidth: 1,
     borderTopColor: palette.line,
     flexDirection: "row",
-    justifyContent: "space-around"
+    justifyContent: "space-around",
+    paddingTop: 6,
+    paddingBottom: 55
   },
-  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4 },
-  navActiveLine: { position: "absolute", top: 0, width: 105, height: 3, backgroundColor: palette.cyan },
-  navText: { color: palette.muted, fontSize: 12, fontWeight: "700" },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    marginHorizontal: 10,
+    borderRadius: 20,
+    minHeight: 56
+  },
+  navItemActive: {
+    backgroundColor: "#DCE2EA"
+  },
+  navActiveLine: { position: "absolute", top: 0, width: 82, height: 3, borderRadius: 99, backgroundColor: palette.cyan },
+  navText: { color: palette.ink, fontSize: 12, fontWeight: "700" },
   navTextActive: { color: palette.ink },
   fieldBlock: { gap: 8 },
   fieldLabel: { color: palette.ink, fontSize: 14, fontWeight: "700" },
