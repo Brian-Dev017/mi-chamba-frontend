@@ -23,7 +23,8 @@ export function ScreenFrame({
   gradient,
   darkTop,
   keyboardAware,
-  noPadding
+  noPadding,
+  scrollable = true
 }: {
   children: ReactNode;
   centered?: boolean;
@@ -31,8 +32,9 @@ export function ScreenFrame({
   darkTop?: boolean;
   keyboardAware?: boolean;
   noPadding?: boolean;
+  scrollable?: boolean;
 }) {
-  const content = (
+  const content = scrollable ? (
     <ScrollView
       style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
       contentContainerStyle={[
@@ -45,6 +47,20 @@ export function ScreenFrame({
     >
       {children}
     </ScrollView>
+  ) : (
+    <View
+      style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
+    >
+      <View
+        style={[
+          styles.screenContent,
+          noPadding && styles.screenContentNoPadding,
+          centered && styles.centerContent
+        ]}
+      >
+        {children}
+      </View>
+    </View>
   );
 
   if (!keyboardAware) {

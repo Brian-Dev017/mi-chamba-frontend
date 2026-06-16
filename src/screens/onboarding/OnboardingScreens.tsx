@@ -670,8 +670,8 @@ export function PersonalInformationScreen({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={local.personalFooter}>
-        <View style={local.singleActionStepBlock}>
+      <View style={[local.personalFooter, local.workerPersonalFooter]}>
+        <View style={[local.singleActionStepBlock, local.workerPersonalStepBlock]}>
           <Text style={local.stepText}>Paso 1 de 3</Text>
           <View style={local.personalStepRow}>
             <View style={[local.personalStepBar, local.personalStepBarActive]} />
@@ -682,7 +682,7 @@ export function PersonalInformationScreen({
         <Pressable
           disabled={!canContinue}
           onPress={() => navigate("identity")}
-          style={[local.nextButton, !canContinue && local.nextButtonDisabled]}
+          style={[local.nextButton, local.workerPersonalNextButton, !canContinue && local.nextButtonDisabled]}
         >
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
           <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
@@ -947,7 +947,7 @@ export function IdentityScreen({
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.personalTopBand} />
       <View style={local.identityScreen}>
         <View style={local.personalHeader}>
@@ -1106,7 +1106,7 @@ export function ProfessionalInformationScreen({
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.personalTopBand} />
       <View style={local.professionalScreen}>
         <View style={local.personalHeader}>
@@ -1262,7 +1262,7 @@ export function DocumentInstruction({
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.personalTopBand} />
       <View style={local.documentInstructionScreen}>
         <View style={local.personalHeader}>
@@ -1971,7 +1971,7 @@ function PhotoBullet({ text }: { text: string }) {
 const local = {
   personalTopBand: {
     height: 42,
-    marginTop: 34,
+    marginTop: -3,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -1985,7 +1985,7 @@ const local = {
   },
   workerPersonalBodyScroll: {
     flexGrow: 1,
-    paddingBottom: 150
+    paddingBottom: 16
   },
   clientPersonalScreen: {
     flex: 1,
@@ -2311,11 +2311,20 @@ const local = {
       paddingHorizontal: 20,
       position: "relative" as const
     },
+  workerPersonalFooter: {
+      minHeight: 0,
+      height: 76,
+      paddingTop: 0,
+      paddingBottom: 0
+    },
+  workerPersonalStepBlock: {
+      top: 10
+    },
   singleActionStepBlock: {
       position: "absolute" as const,
       left: 0,
       right: 0,
-      top: 10,
+      top: 38,
       alignItems: "center" as const
     },
   dualActionStepBlock: {
@@ -2355,13 +2364,17 @@ const local = {
     backgroundColor: "#021B30",
     paddingHorizontal: 12,
     flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    gap: 4
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      gap: 4
+    },
+  workerPersonalNextButton: {
+    minHeight: 34,
+    bottom: 8
   },
   nextButtonDisabled: {
-    borderColor: "#CBD5E1",
-    backgroundColor: "#D6DEE8"
+      borderColor: "#CBD5E1",
+      backgroundColor: "#D6DEE8"
   },
   nextButtonText: {
     color: "#FFFFFF",
@@ -3324,9 +3337,10 @@ const local = {
     fontWeight: "800" as const
   },
   photoInstructionScreen: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 10,
-    minHeight: 592
+    paddingBottom: 4
   },
   photoIntro: {
     color: "#25364A",
@@ -3447,12 +3461,12 @@ const local = {
     marginTop: 10
   },
   photoFooter: {
-    minHeight: 86,
+    height: 90,
     borderTopWidth: 1,
     borderTopColor: "#E0E5EB",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 20,
-    paddingTop: 14
+    paddingTop: 8
   },
   takePhotoButton: {
     minHeight: 44,

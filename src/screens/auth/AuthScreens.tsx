@@ -46,7 +46,7 @@ export function LoadingScreen({ navigate }: ScreenRenderProps) {
   });
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.loadingTopBand} />
       <Animated.View style={[local.loadingScreen, { opacity }]}>
         <View style={local.loadingOrbit}>
@@ -89,7 +89,7 @@ export function LoginScreen({
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.loginTopBand} />
       <View style={local.loginCard}>
         <View style={local.logoBlock}>
@@ -226,7 +226,7 @@ export function ProfileSelectionScreen({ navigate, resetRegistrationDraft }: Scr
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.profileTopBand} />
       <View style={local.profileContent}>
         <Text style={local.profileIntro}>Encuentra el servicio que{"\n"}necesitas cuando lo necesitas</Text>
@@ -313,7 +313,7 @@ function RoleCard({
 const local = {
   loginTopBand: {
     height: 42,
-    marginTop: 34,
+    marginTop: -3,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -396,7 +396,7 @@ const local = {
   registerLink: { color: "#006FE6", fontSize: 15, fontWeight: "800" as const },
   profileTopBand: {
     height: 42,
-    marginTop: 34,
+    marginTop: -3,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -502,7 +502,7 @@ const local = {
   profileContinueTextDisabled: { color: "#6D7B88" },
   loadingTopBand: {
     height: 42,
-    marginTop: 34,
+    marginTop: 10,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
