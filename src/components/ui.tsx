@@ -91,9 +91,9 @@ export function WorkerShell({
   const insets = useSafeAreaInsets();
   const topInset = -2;
   const contentBottomInset = showNavigation
-    ? 118 + Math.max(insets.bottom, 12)
+    ? 76 + Math.max(insets.bottom, 8)
     : -20 + Math.max(insets.bottom, 24);
-  const navBottomInset = Math.max(insets.bottom, 12);
+  const navBottomInset = Math.max(insets.bottom, 8);
 
   return (
     <View style={styles.workerScreen}>
@@ -110,7 +110,7 @@ export function WorkerShell({
         </View>
       </ScrollView>
       {showNavigation ? (
-        <View style={[styles.bottomNav, { paddingBottom: navBottomInset, minHeight: 56 + navBottomInset + 20 }]}>
+        <View style={[styles.bottomNav, { paddingBottom: navBottomInset, minHeight: 50 + navBottomInset }]}>
           {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
             <Pressable key={item} onPress={() => onNavigate?.(item)} style={[styles.navItem, active === item && styles.navItemActive]}>
               {active === item && <View style={styles.navActiveLine} />}
@@ -336,30 +336,30 @@ export const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16
   },
-  workerContent: { padding: 16, paddingBottom: 118, gap: 14 },
+  workerContent: { padding: 16, paddingBottom: 84, gap: 14 },
   workerContentWithoutNav: { paddingBottom: 45 },
   bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
-    minHeight: 88,
+    bottom: -40,
+    minHeight: 64,
     backgroundColor: palette.white,
     borderTopWidth: 1,
     borderTopColor: palette.line,
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingTop: 6,
-    paddingBottom: 55
+    paddingTop: 4,
+    paddingBottom: 8
   },
   navItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
-    marginHorizontal: 10,
-    borderRadius: 20,
-    minHeight: 56
+    gap: 2,
+    marginHorizontal: 8,
+    borderRadius: 16,
+    minHeight: 46
   },
   navItemActive: {
     backgroundColor: "#DCE2EA"
