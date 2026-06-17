@@ -1,5 +1,5 @@
 import { Image, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
@@ -8,9 +8,7 @@ import {
   InfoCard,
   Ionicons,
   MapPreview,
-  PrimaryButton,
   ScreenFrame,
-  SecondaryButton,
   WorkerShell,
   styles
 } from "../../components/ui";
@@ -135,7 +133,7 @@ export function WorkerHomeScreen({
   );
 }
 
-export function RequestDetailScreen({ navigate }: ScreenRenderProps) {
+export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRenderProps) {
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
@@ -227,7 +225,15 @@ export function RequestDetailScreen({ navigate }: ScreenRenderProps) {
           <Pressable style={local.detailRejectButton}>
             <Text style={local.detailRejectText}>Rechazar</Text>
           </Pressable>
-          <Pressable style={local.detailAcceptButton} onPress={() => navigate("workConfirmation")}>
+          <Pressable
+            style={local.detailAcceptButton}
+            onPress={() => {
+              setWorkerRequests((currentRequests) =>
+                currentRequests.filter((job) => job.id !== requestDetail.id)
+              );
+              navigate("workConfirmation");
+            }}
+          >
             <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
             <Text style={local.detailAcceptText}>Aceptar trabajo</Text>
           </Pressable>
@@ -285,17 +291,26 @@ export function RequestDetailScreen({ navigate }: ScreenRenderProps) {
   );
 }
 
-export function WorkConfirmationScreen() {
+export function WorkConfirmationScreen({ navigate }: ScreenRenderProps) {
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      navigate("workerHome");
+    }, 1300);
+
+    return () => clearTimeout(timeoutId);
+  }, [navigate]);
+
   return (
-    <ScreenFrame centered>
-      <View style={local.successIcon}>
-        <Ionicons name="briefcase-outline" size={58} color="#FFFFFF" />
+    <ScreenFrame scrollable={false} noPadding>
+      <View style={local.workAcceptedScreen}>
+        <View style={local.workAcceptedTopBand} />
+        <View style={local.workAcceptedContent}>
+          <Text style={local.workAcceptedTitle}>Trabajo aceptado!</Text>
+          <View style={local.workAcceptedIcon}>
+            <Ionicons name="checkmark" size={92} color="#FFFFFF" />
+          </View>
+        </View>
       </View>
-      <Text style={local.successTitle}>Trabajo aceptado</Text>
-      <Text style={[styles.bodyText, styles.textCenter]}>
-        El cliente sera notificado y podras revisar el detalle desde Mis Trabajos.
-      </Text>
-      <PrimaryButton label="Ver mis trabajos" />
     </ScreenFrame>
   );
 }
@@ -864,16 +879,28 @@ const local = {
     justifyContent: "center" as const
   },
   messageSheetPrimaryText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" as const },
-  successIcon: {
-    width: 132,
-    height: 132,
-    borderRadius: 66,
-    backgroundColor: "#22C55E",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginBottom: 22
+  workAcceptedScreen: { flex: 1, backgroundColor: "#F4F7FA" },
+  workAcceptedTopBand: {
+    height: 52,
+    backgroundColor: "#021B30",
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16
   },
-  successTitle: { color: "#021B30", fontSize: 20, fontWeight: "900" as const, textAlign: "center" as const },
+  workAcceptedContent: {
+    flex: 1,
+    alignItems: "center" as const,
+    paddingTop: 94,
+    gap: 70
+  },
+  workAcceptedTitle: { color: "#021B30", fontSize: 20, fontWeight: "800" as const, textAlign: "center" as const },
+  workAcceptedIcon: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "#021B30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
   profileHeader: {
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
