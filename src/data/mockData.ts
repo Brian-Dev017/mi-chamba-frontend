@@ -46,7 +46,7 @@ export const workerJobs: WorkerJob[] = [
     category: "Electricidad",
     location: "Jr. Junin 345, Cercado de Lima",
     price: "S/ 120.00",
-    time: "15 Oct, 03:00 PM",
+    time: "15 Jul, 03:00 PM",
     status: "AGENDADO"
   },
   {

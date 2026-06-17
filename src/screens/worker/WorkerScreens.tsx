@@ -1,6 +1,6 @@
 import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useState } from "react";
-import { requestDetail, workerJobs, workerReviews } from "../../data/mockData";
+import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
   ConfirmationDialog,
@@ -12,7 +12,6 @@ import {
   ScreenFrame,
   SecondaryButton,
   SectionLabel,
-  StatusPill,
   WorkerShell,
   styles
 } from "../../components/ui";
@@ -298,30 +297,88 @@ export function WorkConfirmationScreen() {
 }
 
 export function MyJobsScreen({ navigate }: ScreenRenderProps) {
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const visibleJobs = [
+    {
+      id: "my-job-001",
+      title: "Mantenimiento preventivo",
+      location: "Jr. Junin 345, Cercado de Lima",
+      time: "15 Jul, 03:00 PM",
+      status: "AGENDADO" as const
+    },
+    {
+      id: "my-job-002",
+      title: "Mantenimiento preventivo",
+      location: "Jr. Junin 345, Cercado de Lima",
+      time: "01 Jun, 03:00 PM",
+      status: "COMPLETADO" as const
+    }
+  ];
+
   return (
     <WorkerShell active="Mis Trabajos" onNavigate={(section) => navigateWorkerSection(navigate, section)}>
-      <View style={styles.rowBetween}>
-        <Text style={styles.screenTitle}>Mis Trabajos</Text>
-        <Text style={local.exitText}>Salir</Text>
-      </View>
-      {workerJobs.slice(1).map((job, index) => (
-        <View key={job.id} style={local.historyCard}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>{job.title}</Text>
-            <StatusPill label={index === 0 ? "AGENDADO" : "COMPLETADO"} muted={index !== 0} />
-          </View>
-          <Text style={styles.captionText}>{job.location}</Text>
-          <Text style={styles.captionText}>{job.time}</Text>
-          <View style={styles.rowBetween}>
-            <Text style={styles.linkTextStrong}>Ver detalles</Text>
-            <Text style={styles.cardTitle}>{index === 0 ? "Agendado" : "Completado"}</Text>
-          </View>
+      <View style={local.myJobsHeader}>
+        <View>
+          <Text style={local.myJobsTitle}>Mis Trabajos</Text>
+          <View style={local.myJobsTitleUnderline} />
         </View>
-      ))}
+        <Pressable onPress={() => setShowLogoutConfirmation(true)} style={local.exitButton}>
+          <Text style={local.exitButtonText}>Salir</Text>
+        </Pressable>
+      </View>
+
+      <View style={local.myJobsList}>
+        {visibleJobs.map((job) => {
+          const isCompleted = job.status === "COMPLETADO";
+
+          return (
+            <View key={job.id} style={local.historyCard}>
+              <View style={local.historyHeader}>
+                <Text style={local.historyTitle}>{job.title}</Text>
+                <View style={[local.historyStatusPill, isCompleted && local.historyStatusPillCompleted]}>
+                  <Text style={local.historyStatusText}>{job.status}</Text>
+                </View>
+              </View>
+
+              <View style={local.historyMetaRow}>
+                <Ionicons name="location-outline" size={16} color="#00A6FF" />
+                <Text style={local.historyMetaText}>{job.location}</Text>
+              </View>
+              <View style={local.historyMetaRow}>
+                <Ionicons name="time-outline" size={16} color="#00A6FF" />
+                <Text style={local.historyMetaText}>{job.time}</Text>
+              </View>
+
+              <View style={local.historyActionRow}>
+                <Pressable style={local.historyDetailButton}>
+                  <Text style={local.historyDetailText}>Ver detalles</Text>
+                </Pressable>
+                <Pressable style={[local.historyCompleteButton, !isCompleted && local.historyCompleteButtonDisabled]}>
+                  <Text style={[local.historyCompleteText, !isCompleted && local.historyCompleteTextDisabled]}>
+                    Completado
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <ConfirmationDialog
+        visible={showLogoutConfirmation}
+        title="Cerrar sesion"
+        message="Si sales ahora, volveras al login del trabajador."
+        confirmLabel="Salir"
+        cancelLabel="Cancelar"
+        onCancel={() => setShowLogoutConfirmation(false)}
+        onConfirm={() => {
+          setShowLogoutConfirmation(false);
+          navigate("login");
+        }}
+      />
     </WorkerShell>
   );
 }
-
 export function WorkerProfileScreen({ authenticatedWorker, navigate }: ScreenRenderProps) {
   const workerFullName = authenticatedWorker
     ? `${authenticatedWorker.firstName} ${authenticatedWorker.lastName}`
@@ -477,7 +534,77 @@ const local = {
     justifyContent: "center" as const
   },
   detailButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "500" as const },
-  historyCard: card,
+  myJobsHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    gap: 14,
+    marginTop: 0,
+    marginBottom: 20
+  },
+  myJobsTitle: { color: "#102538", fontSize: 20, fontWeight: "500" as const },
+  myJobsTitleUnderline: { width: 43, height: 3, borderRadius: 99, backgroundColor: "#021B30", marginTop: 4 },
+  myJobsList: { gap: 24 },
+  historyCard: {
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E3EAF2",
+    gap: 10,
+    shadowColor: "#1E293B",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3
+  },
+  historyHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    gap: 10
+  },
+  historyTitle: { color: "#102538", fontSize: 16, fontWeight: "800" as const, flex: 1 },
+  historyStatusPill: {
+    borderRadius: 999,
+    backgroundColor: "#1976D2",
+    paddingHorizontal: 9,
+    paddingVertical: 6
+  },
+  historyStatusPillCompleted: { backgroundColor: "#22CC37" },
+  historyStatusText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" as const },
+  historyMetaRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5 },
+  historyMetaText: { color: "#3A4957", fontSize: 14, fontWeight: "500" as const, flexShrink: 1 },
+  historyActionRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    gap: 18,
+    marginTop: 12
+  },
+  historyDetailButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#1976D2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#FFFFFF"
+  },
+  historyDetailText: { color: "#021B30", fontSize: 14, fontWeight: "700" as const },
+  historyCompleteButton: {
+    flex: 1.18,
+    minHeight: 40,
+    borderRadius: 20,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#021B30"
+  },
+  historyCompleteButtonDisabled: { backgroundColor: "#C8CCD2" },
+  historyCompleteText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" as const },
+  historyCompleteTextDisabled: { color: "#FFFFFF" },
   reviewCard: card,
   detailScreen: { gap: 12, paddingBottom: 8 },
   detailHeaderTopRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12, paddingBottom: 0 },
