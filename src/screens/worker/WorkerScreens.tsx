@@ -1,4 +1,4 @@
-import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { useState } from "react";
 import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
@@ -11,7 +11,6 @@ import {
   PrimaryButton,
   ScreenFrame,
   SecondaryButton,
-  SectionLabel,
   WorkerShell,
   styles
 } from "../../components/ui";
@@ -26,6 +25,11 @@ const homeFilters = ["Todos", "Cerca", "Mejor Precio", "Electricidad"] as const;
 const requestReferencePhotos = [
   "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80",
   "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80"
+] as const;
+const workerPaymentHistory = [
+  { id: "payment-001", date: "12/06/2026", service: "Instalacion de tomacorrientes", amount: "S/ 85.00" },
+  { id: "payment-002", date: "06/06/2026", service: "Mantenimiento preventivo", amount: "S/ 120.00" },
+  { id: "payment-003", date: "28/05/2026", service: "Revision de tablero electrico", amount: "S/ 65.00" }
 ] as const;
 
 function mapWorkerSectionToScreen(section: WorkerSection) {
@@ -379,7 +383,10 @@ export function MyJobsScreen({ navigate }: ScreenRenderProps) {
     </WorkerShell>
   );
 }
-export function WorkerProfileScreen({ authenticatedWorker, navigate }: ScreenRenderProps) {
+export function WorkerProfileScreen({ authenticatedWorker, navigate, setAuthenticatedWorker }: ScreenRenderProps) {
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const workerFullName = authenticatedWorker
     ? `${authenticatedWorker.firstName} ${authenticatedWorker.lastName}`
     : "Juan Perez Perez";
@@ -387,37 +394,128 @@ export function WorkerProfileScreen({ authenticatedWorker, navigate }: ScreenRen
 
   return (
     <WorkerShell active="Perfil" onNavigate={(section) => navigateWorkerSection(navigate, section)}>
-      <View style={local.profileHero}>
-        {authenticatedWorker?.profilePhotoUri ? (
-          <Image source={{ uri: authenticatedWorker.profilePhotoUri }} style={local.profileAvatarPhoto} />
-        ) : (
-          <View style={local.profileAvatar}>
-            <Ionicons name="person" size={66} color="#FFFFFF" />
+      <View style={local.profileHeader}>
+        <View style={local.profileAvatarColumn}>
+          <View style={local.profilePhotoWrap}>
+            {authenticatedWorker?.profilePhotoUri ? (
+              <Image source={{ uri: authenticatedWorker.profilePhotoUri }} style={local.profileAvatarPhoto} />
+            ) : (
+              <View style={local.profileAvatar}>
+                <Ionicons name="person" size={44} color="#FFFFFF" />
+              </View>
+            )}
+            <View style={[local.profileStatusDot, !isAvailable && local.profileStatusDotInactive]} />
           </View>
-        )}
-        <Text style={styles.screenTitle}>{workerFullName}</Text>
-        <Text style={styles.captionText}>{workerTrade}</Text>
-        <Text style={local.ratingText}>4.5</Text>
-      </View>
-      <View style={local.earningsCard}>
-        <Text style={styles.cardTitle}>Mis ganancias</Text>
-        <Text style={styles.captionText}>Balance actual</Text>
-        <Text style={local.priceMedium}>S/ 1,240.00</Text>
-        <Text style={styles.linkTextStrong}>Ver historial de pagos</Text>
-      </View>
-      <View style={styles.rowBetween}>
-        <SectionLabel label="LO QUE DICEN DE MI" />
-        <Text style={styles.linkTextStrong}>Ver todas</Text>
-      </View>
-      {workerReviews.map((review) => (
-        <View key={review.id} style={local.reviewCard}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>{review.name}</Text>
-            <Text style={styles.captionText}>{review.date}</Text>
-          </View>
-          <Text style={styles.bodyText}>{review.body}</Text>
         </View>
-      ))}
+
+        <View style={local.profileIdentity}>
+          <View style={local.profileNameRow}>
+            <Text style={local.profileName}>{workerFullName}</Text>
+            <Pressable onPress={() => setShowLogoutConfirmation(true)} style={local.exitButton}>
+              <Text style={local.exitButtonText}>Salir</Text>
+            </Pressable>
+          </View>
+          <View style={local.profileTradeRow}>
+            <Text style={local.profileTrade}>{workerTrade}</Text>
+            <View style={local.profileRatingRow}>
+              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Text style={local.profileRatingText}>4.5</Text>
+            </View>
+          </View>
+          <View style={local.profileToolsRow}>
+            <View style={local.profileAvailability}>
+              <Text style={local.profileAvailabilityText}>{isAvailable ? "Activo" : "Inactivo"}</Text>
+              <Switch
+                ios_backgroundColor="#C8CCD2"
+                onValueChange={setIsAvailable}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: "#C8CCD2", true: "#00C853" }}
+                value={isAvailable}
+              />
+            </View>
+            <Pressable style={local.accessibilityButton}>
+              <Ionicons name="accessibility-outline" size={18} color="#1976D2" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      <Text style={local.profileSectionTitle}>Mis ganancias</Text>
+      <View style={local.earningsCard}>
+        <View style={local.earningsBalanceRow}>
+          <View style={local.earningsIcon}>
+            <Ionicons name="cash-outline" size={22} color="#1976D2" />
+          </View>
+          <View>
+            <Text style={local.earningsLabel}>Balance actual</Text>
+            <Text style={local.priceMedium}>S/ 1,240.00</Text>
+          </View>
+        </View>
+        <Pressable onPress={() => setShowPaymentHistory(true)} style={local.paymentHistoryButton}>
+          <Text style={local.paymentHistoryText}>Ver historial de pagos</Text>
+        </Pressable>
+      </View>
+
+      <View style={local.profileReviewHeader}>
+        <Text style={local.profileReviewTitle}>LO QUE DICEN DE MI</Text>
+        <Text style={local.profileReviewLink}>Ver todas</Text>
+      </View>
+
+      <View style={local.profileReviewsPanel}>
+        {workerReviews.map((review, reviewIndex) => (
+          <View key={review.id} style={[local.profileReviewItem, reviewIndex > 0 && local.profileReviewItemBorder]}>
+            <View style={local.profileReviewTop}>
+              <View>
+                <Text style={local.profileReviewName}>{review.name}</Text>
+                <View style={local.profileReviewStars}>
+                  {[0, 1, 2, 3, 4].map((starIndex) => (
+                    <Ionicons key={`${review.id}-star-${starIndex}`} name="star" size={12} color="#00A6FF" />
+                  ))}
+                </View>
+              </View>
+              <Text style={local.profileReviewDate}>{review.date}</Text>
+            </View>
+            <Text style={local.profileReviewBody}>{review.body}</Text>
+          </View>
+        ))}
+      </View>
+
+      <ConfirmationDialog
+        visible={showLogoutConfirmation}
+        title="Cerrar sesion"
+        message="Si sales ahora, volveras al login del trabajador."
+        confirmLabel="Salir"
+        cancelLabel="Cancelar"
+        onCancel={() => setShowLogoutConfirmation(false)}
+        onConfirm={() => {
+          setShowLogoutConfirmation(false);
+          setAuthenticatedWorker(null);
+          navigate("login");
+        }}
+      />
+
+      <Modal animationType="slide" transparent visible={showPaymentHistory} onRequestClose={() => setShowPaymentHistory(false)}>
+        <View style={local.paymentHistoryOverlay}>
+          <Pressable style={local.paymentHistoryScrim} onPress={() => setShowPaymentHistory(false)} />
+          <View style={local.paymentHistorySheet}>
+            <View style={local.messageSheetHandle} />
+            <Text style={local.paymentHistoryTitle}>Historial de pagos</Text>
+            <Text style={local.paymentHistorySubtitle}>Pagos registrados antes del 14/06/2026.</Text>
+            {workerPaymentHistory.map((payment) => (
+              <View key={payment.id} style={local.paymentHistoryRow}>
+                <View style={local.paymentHistoryIcon}>
+                  <Ionicons name="receipt-outline" size={18} color="#1976D2" />
+                </View>
+                <View style={local.flex}>
+                  <Text style={local.paymentHistoryService}>{payment.service}</Text>
+                  <Text style={local.paymentHistoryDate}>{payment.date}</Text>
+                </View>
+                <Text style={local.paymentHistoryAmount}>{payment.amount}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </WorkerShell>
   );
 }
@@ -776,23 +874,158 @@ const local = {
     marginBottom: 22
   },
   successTitle: { color: "#021B30", fontSize: 20, fontWeight: "900" as const, textAlign: "center" as const },
-  profileHero: { alignItems: "center" as const, gap: 6, paddingTop: 28 },
+  profileHeader: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12,
+    marginTop: 0
+  },
+  profileAvatarColumn: { alignItems: "center" as const, gap: 4 },
+  profilePhotoWrap: { position: "relative" as const },
   profileAvatar: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: "#021B30",
     alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginBottom: 10
+    justifyContent: "center" as const
   },
   profileAvatarPhoto: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    marginBottom: 10
+    width: 62,
+    height: 62,
+    borderRadius: 31
   },
-  ratingText: { color: "#021B30", fontSize: 14, fontWeight: "900" as const },
-  earningsCard: { ...card, padding: 18, gap: 8 },
-  priceMedium: { color: "#021B30", fontSize: 24, fontWeight: "900" as const }
+  profileStatusDot: {
+    position: "absolute" as const,
+    right: -1,
+    bottom: 3,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#22C55E",
+    borderWidth: 2,
+    borderColor: "#F4F7FA"
+  },
+  profileStatusDotInactive: { backgroundColor: "#9AA4AF" },
+  profileRatingRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 3 },
+  profileRatingText: { color: "#021B30", fontSize: 12, fontWeight: "800" as const },
+  profileIdentity: { flex: 1, gap: 6, justifyContent: "center" as const },
+  profileNameRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    gap: 10
+  },
+  profileName: { color: "#102538", fontSize: 18, fontWeight: "500" as const, flex: 1 },
+  profileTradeRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
+  profileTrade: { color: "#1976D2", fontSize: 14, fontWeight: "700" as const },
+  profileToolsRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, marginTop: 2 },
+  profileAvailability: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    width: 142,
+    borderRadius: 999,
+    backgroundColor: "#EAF2F8",
+    paddingLeft: 10,
+    paddingRight: 2,
+    minHeight: 32
+  },
+  profileAvailabilityText: { color: "#102538", fontSize: 12, fontWeight: "800" as const },
+  accessibilityButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#EAF2F8",
+    borderWidth: 1,
+    borderColor: "#D8E5F0"
+  },
+  profileSectionTitle: { color: "#2D3A46", fontSize: 14, fontWeight: "600" as const, marginTop: 8 },
+  earningsCard: { borderRadius: 12, padding: 22, gap: 18, backgroundColor: "#021B30" },
+  earningsBalanceRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 14 },
+  earningsIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#0D3555",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  earningsLabel: { color: "#FFFFFF", fontSize: 12, fontWeight: "500" as const },
+  priceMedium: { color: "#FFFFFF", fontSize: 24, fontWeight: "500" as const },
+  paymentHistoryButton: {
+    minHeight: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#0B78B6",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  paymentHistoryText: { color: "#00A6FF", fontSize: 14, fontWeight: "500" as const },
+  profileReviewHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginTop: 2
+  },
+  profileReviewTitle: { color: "#405163", fontSize: 13, fontWeight: "800" as const },
+  profileReviewLink: { color: "#1976D2", fontSize: 13, fontWeight: "600" as const },
+  profileReviewsPanel: {
+    borderRadius: 28,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D6DEE8",
+    overflow: "hidden" as const
+  },
+  profileReviewItem: { paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
+  profileReviewItemBorder: { borderTopWidth: 1, borderTopColor: "#D6DEE8" },
+  profileReviewTop: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    gap: 12
+  },
+  profileReviewName: { color: "#102538", fontSize: 14, fontWeight: "800" as const },
+  profileReviewStars: { flexDirection: "row" as const, alignItems: "center" as const, gap: 1, marginTop: 2 },
+  profileReviewDate: { color: "#5F6B77", fontSize: 12, fontWeight: "500" as const },
+  profileReviewBody: { color: "#44515E", fontSize: 15, lineHeight: 20, fontWeight: "500" as const },
+  paymentHistoryOverlay: {
+    flex: 1,
+    justifyContent: "flex-end" as const,
+    backgroundColor: "rgba(2, 27, 48, 0.34)"
+  },
+  paymentHistoryScrim: { flex: 1 },
+  paymentHistorySheet: {
+    marginBottom: 74,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 12
+  },
+  paymentHistoryTitle: { color: "#102538", fontSize: 18, fontWeight: "800" as const, textAlign: "center" as const },
+  paymentHistorySubtitle: { color: "#6A7785", fontSize: 13, lineHeight: 18, textAlign: "center" as const },
+  paymentHistoryRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    borderRadius: 16,
+    backgroundColor: "#F4F7FA",
+    paddingHorizontal: 12,
+    paddingVertical: 12
+  },
+  paymentHistoryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#EAF2F8",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  paymentHistoryService: { color: "#102538", fontSize: 13, fontWeight: "800" as const },
+  paymentHistoryDate: { color: "#6A7785", fontSize: 12, fontWeight: "500" as const, marginTop: 2 },
+  paymentHistoryAmount: { color: "#021B30", fontSize: 14, fontWeight: "900" as const }
 };
