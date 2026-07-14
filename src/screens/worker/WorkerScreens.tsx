@@ -1,6 +1,8 @@
 import { Image, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { useEffect, useState } from "react";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
+import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
+import { useAccessibility } from "../../accessibility/AccessibilityContext";
 import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
@@ -54,6 +56,7 @@ export function WorkerHomeScreen({
   workerRequests,
   setWorkerRequests
 }: ScreenRenderProps) {
+  const { resetAccessibility } = useAccessibility();
   const [activeFilter, setActiveFilter] = useState<(typeof homeFilters)[number]>("Todos");
   const [modalState, setModalState] = useState<WorkerModalState>(null);
   const workerName = authenticatedWorker
@@ -70,6 +73,7 @@ export function WorkerHomeScreen({
     }
 
     if (modalState.type === "logout") {
+      resetAccessibility();
       setAuthenticatedWorker(null);
       setAuthenticatedRole(null);
       navigate("login");
@@ -318,7 +322,12 @@ export function WorkConfirmationScreen({ navigate }: ScreenRenderProps) {
   );
 }
 
-export function MyJobsScreen({ navigate }: ScreenRenderProps) {
+export function MyJobsScreen({
+  navigate,
+  setAuthenticatedRole,
+  setAuthenticatedWorker
+}: ScreenRenderProps) {
+  const { resetAccessibility } = useAccessibility();
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const visibleJobs = [
     {
@@ -395,6 +404,9 @@ export function MyJobsScreen({ navigate }: ScreenRenderProps) {
         onCancel={() => setShowLogoutConfirmation(false)}
         onConfirm={() => {
           setShowLogoutConfirmation(false);
+          resetAccessibility();
+          setAuthenticatedWorker(null);
+          setAuthenticatedRole(null);
           navigate("login");
         }}
       />
@@ -407,6 +419,8 @@ export function WorkerProfileScreen({
   setAuthenticatedRole,
   setAuthenticatedWorker
 }: ScreenRenderProps) {
+  const { resetAccessibility } = useAccessibility();
+  const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
@@ -456,7 +470,13 @@ export function WorkerProfileScreen({
                 value={isAvailable}
               />
             </View>
-            <Pressable style={local.accessibilityButton}>
+            <Pressable
+              accessibilityHint="Configura el tamaño del texto, el contraste y la lectura"
+              accessibilityLabel="Accesibilidad"
+              accessibilityRole="button"
+              onPress={() => setShowAccessibilitySettings(true)}
+              style={local.accessibilityButton}
+            >
               <Ionicons name="accessibility-outline" size={18} color="#1976D2" />
             </Pressable>
           </View>
@@ -512,10 +532,16 @@ export function WorkerProfileScreen({
         onCancel={() => setShowLogoutConfirmation(false)}
         onConfirm={() => {
           setShowLogoutConfirmation(false);
+          resetAccessibility();
           setAuthenticatedWorker(null);
           setAuthenticatedRole(null);
           navigate("login");
         }}
+      />
+
+      <AccessibilitySettingsModal
+        onClose={() => setShowAccessibilitySettings(false)}
+        visible={showAccessibilitySettings}
       />
 
       <Modal animationType="slide" transparent visible={showPaymentHistory} onRequestClose={() => setShowPaymentHistory(false)}>

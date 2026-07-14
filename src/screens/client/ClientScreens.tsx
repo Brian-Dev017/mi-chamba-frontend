@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { ConfirmationDialog, Ionicons, ScreenFrame } from "../../components/ui";
+import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
+import { useAccessibility } from "../../accessibility/AccessibilityContext";
 import { palette } from "../../theme/palette";
 import type { ScreenRenderProps } from "../../types/domain";
 
@@ -62,7 +64,9 @@ export function ClientHomeScreen({
   setAuthenticatedClient,
   setAuthenticatedRole
 }: ScreenRenderProps) {
+  const { resetAccessibility } = useAccessibility();
   const [activeSection, setActiveSection] = useState<ClientSection>("Inicio");
+  const [isAccessibilityVisible, setAccessibilityVisible] = useState(false);
   const [currentNeed, setCurrentNeed] = useState<ActiveNeed>(activeNeed);
   const [isComposerVisible, setComposerVisible] = useState(false);
   const [isLogoutConfirmationVisible, setLogoutConfirmationVisible] = useState(false);
@@ -98,6 +102,7 @@ export function ClientHomeScreen({
 
   const logout = () => {
     setLogoutConfirmationVisible(false);
+    resetAccessibility();
     setAuthenticatedClient(null);
     setAuthenticatedRole(null);
     navigate("login");
@@ -203,6 +208,7 @@ export function ClientHomeScreen({
               document={authenticatedClient?.documentNumber ?? "No disponible"}
               name={clientName}
               phone={authenticatedClient?.phone ?? "No disponible"}
+              onOpenAccessibility={() => setAccessibilityVisible(true)}
               onLogout={() => setLogoutConfirmationVisible(true)}
             />
           )}
@@ -218,6 +224,10 @@ export function ClientHomeScreen({
         onConfirm={logout}
         title="Cerrar sesion?"
         visible={isLogoutConfirmationVisible}
+      />
+      <AccessibilitySettingsModal
+        onClose={() => setAccessibilityVisible(false)}
+        visible={isAccessibilityVisible}
       />
     </View>
   );
@@ -300,12 +310,14 @@ function ClientProfile({
   address,
   document,
   name,
+  onOpenAccessibility,
   onLogout,
   phone
 }: {
   address: string;
   document: string;
   name: string;
+  onOpenAccessibility: () => void;
   onLogout: () => void;
   phone: string;
 }) {
@@ -324,6 +336,22 @@ function ClientProfile({
         <ProfileDetail icon="call-outline" label="Celular" value={phone} />
         <ProfileDetail icon="location-outline" label="Ubicacion" value={address} />
       </View>
+      <Pressable
+        accessibilityHint="Configura el tamaño del texto, el contraste y la lectura"
+        accessibilityLabel="Accesibilidad"
+        accessibilityRole="button"
+        onPress={onOpenAccessibility}
+        style={local.profileAccessibilityButton}
+      >
+        <View style={local.profileAccessibilityIcon}>
+          <Ionicons name="accessibility-outline" size={21} color={palette.blue} />
+        </View>
+        <View style={local.profileAccessibilityCopy}>
+          <Text style={local.profileAccessibilityTitle}>Accesibilidad</Text>
+          <Text style={local.profileAccessibilityDescription}>Texto, contraste y lectura</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={19} color={palette.muted} />
+      </Pressable>
       <Pressable onPress={onLogout} style={local.logoutButton}>
         <Ionicons name="log-out-outline" size={19} color="#C92A2A" />
         <Text style={local.logoutButtonText}>Cerrar sesion</Text>
@@ -461,6 +489,11 @@ const local = StyleSheet.create({
   profileDetailCopy: { flex: 1 },
   profileDetailLabel: { color: palette.muted, fontSize: 11, fontWeight: "700" },
   profileDetailValue: { color: palette.ink, fontSize: 14, lineHeight: 19, fontWeight: "700", marginTop: 2 },
+  profileAccessibilityButton: { minHeight: 64, marginTop: 16, paddingHorizontal: 13, borderRadius: 14, flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
+  profileAccessibilityIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: palette.softBlue },
+  profileAccessibilityCopy: { flex: 1, gap: 2 },
+  profileAccessibilityTitle: { color: palette.ink, fontSize: 14, fontWeight: "900" },
+  profileAccessibilityDescription: { color: palette.muted, fontSize: 11, lineHeight: 16 },
   logoutButton: { minHeight: 44, marginTop: 22, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.softRed, borderWidth: 1, borderColor: "#F4B4B4" },
   logoutButtonText: { color: "#C92A2A", fontSize: 14, fontWeight: "900" },
   bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: 70, paddingTop: 5, paddingBottom: 8, backgroundColor: palette.white, borderTopWidth: 1, borderTopColor: palette.line, flexDirection: "row" },
