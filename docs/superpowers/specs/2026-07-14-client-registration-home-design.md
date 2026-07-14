@@ -62,7 +62,9 @@ Las confirmaciones utilizarán los componentes existentes para conservar tono, i
 
 Las pantallas de formulario continuarán dentro del contenedor responsive y desplazable existente. Mientras el teclado esté abierto:
 
-- el indicador inferior de pasos no se renderizará;
+- el indicador inferior y su contenedor blanco no se mostrarán;
+- el footer perderá fondo, borde y altura reservada para el progreso;
+- los botones de acción bajarán al borde inferior del área visible y quedarán justo encima del teclado;
 - los campos, errores y botones seguirán pudiendo desplazarse por encima del teclado;
 - el borde superior del teclado seguirá siendo el límite inferior temporal del área visible.
 
@@ -108,7 +110,7 @@ Los componentes visuales no realizarán autenticación ni mutarán directamente 
 - Probar credenciales válidas e inválidas de ambos roles y sus destinos.
 - Verificar las confirmaciones de retroceso, cancelación y finalización.
 - Confirmar la pantalla de registro exitoso.
-- Abrir el teclado en cada paso y comprobar que el indicador desaparezca y el contenido continúe desplazándose.
+- Abrir el teclado en cada paso y comprobar que desaparezcan el indicador, el fondo y el borde del footer; los botones deben bajar hasta quedar encima del teclado y el contenido debe continuar desplazándose.
 - Revisar la pantalla principal en anchos compactos y amplios.
 - Comprobar los estados de publicación activa con cero y con múltiples respuestas.
 - Ejecutar `npm run typecheck`.

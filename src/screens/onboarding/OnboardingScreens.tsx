@@ -195,6 +195,7 @@ export function ClientPersonalInformationScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const [documentTouched, setDocumentTouched] = useState(false);
   const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
@@ -362,12 +363,16 @@ export function ClientPersonalInformationScreen({
             </View>
           </View>
         </ScrollView>
-        <View style={local.personalFooter}>
-        <RegistrationStepProgress layout="single" step={1} />
+        <View style={[local.personalFooter, isKeyboardVisible && local.registrationFooterKeyboardOpen]}>
+        <RegistrationStepProgress hidden={isKeyboardVisible} layout="single" step={1} />
         <Pressable
           disabled={!canContinue}
           onPress={() => navigate("clientLocation")}
-          style={[local.nextButton, !canContinue && local.nextButtonDisabled]}
+          style={[
+            local.nextButton,
+            isKeyboardVisible && local.footerButtonKeyboardOpen,
+            !canContinue && local.nextButtonDisabled
+          ]}
         >
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
           <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
@@ -419,6 +424,7 @@ export function ClientLocationScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
@@ -582,9 +588,15 @@ export function ClientLocationScreen({
             </View>
           </View>
         </ScrollView>
-        <View style={local.identityFooter}>
-        <RegistrationStepProgress step={2} />
-        <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
+        <View style={[local.identityFooter, isKeyboardVisible && local.registrationFooterKeyboardOpen]}>
+        <RegistrationStepProgress hidden={isKeyboardVisible} step={2} />
+        <View
+          style={[
+            local.identityFooterActions,
+            local.clientWizardFooterActions,
+            isKeyboardVisible && local.footerActionsKeyboardOpen
+          ]}
+        >
           <Pressable
             onPress={() => setExitIntent({ action: "back", target: "clientPersonalInformation" })}
             style={local.backButton}
@@ -619,6 +631,7 @@ export function ClientPropertyTypeScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -779,9 +792,15 @@ export function ClientPropertyTypeScreen({
             </Pressable>
           </View>
         </ScrollView>
-        <View style={local.identityFooter}>
-        <RegistrationStepProgress step={3} />
-        <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
+        <View style={[local.identityFooter, isKeyboardVisible && local.registrationFooterKeyboardOpen]}>
+        <RegistrationStepProgress hidden={isKeyboardVisible} step={3} />
+        <View
+          style={[
+            local.identityFooterActions,
+            local.clientWizardFooterActions,
+            isKeyboardVisible && local.footerActionsKeyboardOpen
+          ]}
+        >
           <Pressable
             onPress={() => setExitIntent({ action: "back", target: "clientLocation" })}
             style={local.backButton}
@@ -821,6 +840,7 @@ export function PersonalInformationScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [birthDateTouched, setBirthDateTouched] = useState(false);
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const [showWorkerPassword, setShowWorkerPassword] = useState(false);
@@ -987,12 +1007,23 @@ export function PersonalInformationScreen({
             </View>
           </View>
         </ScrollView>
-        <View style={[local.personalFooter, local.workerPersonalFooter]}>
-        <RegistrationStepProgress layout="worker" step={1} />
+        <View
+          style={[
+            local.personalFooter,
+            local.workerPersonalFooter,
+            isKeyboardVisible && local.registrationFooterKeyboardOpen
+          ]}
+        >
+        <RegistrationStepProgress hidden={isKeyboardVisible} layout="worker" step={1} />
         <Pressable
           disabled={!canContinue}
           onPress={() => navigate("identity")}
-          style={[local.nextButton, local.workerPersonalNextButton, !canContinue && local.nextButtonDisabled]}
+          style={[
+            local.nextButton,
+            local.workerPersonalNextButton,
+            isKeyboardVisible && local.footerButtonKeyboardOpen,
+            !canContinue && local.nextButtonDisabled
+          ]}
         >
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
           <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
@@ -1045,15 +1076,15 @@ function RegistrationExitConfirmation({
 }
 
 function RegistrationStepProgress({
+  hidden = false,
   layout = "dual",
   step
 }: {
+  hidden?: boolean;
   layout?: "dual" | "single" | "worker";
   step: 1 | 2 | 3;
 }) {
-  const isKeyboardVisible = useKeyboardVisibility();
-
-  if (isKeyboardVisible) {
+  if (hidden) {
     return null;
   }
 
@@ -1249,6 +1280,7 @@ export function IdentityScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [documentTouched, setDocumentTouched] = useState(false);
   const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
@@ -1371,9 +1403,15 @@ export function IdentityScreen({
             </View>
           </View>
         </ScrollView>
-        <View style={[local.identityFooter, local.workerIdentityFooter]}>
-        <RegistrationStepProgress step={2} />
-        <View style={local.identityFooterActions}>
+        <View
+          style={[
+            local.identityFooter,
+            local.workerIdentityFooter,
+            isKeyboardVisible && local.registrationFooterKeyboardOpen
+          ]}
+        >
+        <RegistrationStepProgress hidden={isKeyboardVisible} step={2} />
+        <View style={[local.identityFooterActions, isKeyboardVisible && local.footerActionsKeyboardOpen]}>
           <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} style={local.backButton}>
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
             <Text style={local.nextButtonText}>Regresar</Text>
@@ -1419,6 +1457,7 @@ export function ProfessionalInformationScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const isKeyboardVisible = useKeyboardVisibility();
   const [isTradeMenuOpen, setIsTradeMenuOpen] = useState(false);
   const [certificateTouched, setCertificateTouched] = useState(false);
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
@@ -1549,20 +1588,28 @@ export function ProfessionalInformationScreen({
         ) : null}
       </View>
 
-      <View style={local.professionalFooter}>
+      <View style={[local.professionalFooter, isKeyboardVisible && local.registrationFooterKeyboardOpen]}>
         <Pressable
           disabled={!trade}
           onPress={finishWorkerRegistration}
-          style={[local.finishRegistrationButton, !trade && local.finishRegistrationButtonDisabled]}
+          style={[
+            local.finishRegistrationButton,
+            isKeyboardVisible && local.footerButtonKeyboardOpen,
+            !trade && local.finishRegistrationButtonDisabled
+          ]}
         >
           <Text style={[local.finishRegistrationText, !trade && local.nextButtonTextDisabled]}>
             Finalizar registro
           </Text>
         </Pressable>
-        <RegistrationStepProgress step={3} />
+        <RegistrationStepProgress hidden={isKeyboardVisible} step={3} />
         <Pressable
           onPress={() => setExitIntent({ action: "back", target: "identity" })}
-          style={[local.backButton, local.professionalBackButton]}
+          style={[
+            local.backButton,
+            local.professionalBackButton,
+            isKeyboardVisible && local.footerButtonKeyboardOpen
+          ]}
         >
           <Ionicons name="play-back" size={15} color="#FFFFFF" />
           <Text style={local.nextButtonText}>Regresar</Text>
@@ -2844,6 +2891,14 @@ const local = {
       paddingTop: 0,
       paddingBottom: 0
     },
+  registrationFooterKeyboardOpen: {
+    minHeight: 54,
+    height: 54,
+    borderTopWidth: 0,
+    backgroundColor: "transparent",
+    paddingTop: 0,
+    paddingBottom: 0
+  },
   workerPersonalStepBlock: {
       top: 10
     },
@@ -2897,6 +2952,9 @@ const local = {
     },
   workerPersonalNextButton: {
     minHeight: 34,
+    bottom: 8
+  },
+  footerButtonKeyboardOpen: {
     bottom: 8
   },
   nextButtonDisabled: {
@@ -3028,6 +3086,9 @@ const local = {
     },
   clientWizardFooterActions: {
     bottom: 14
+  },
+  footerActionsKeyboardOpen: {
+    bottom: 8
   },
     backButton: {
       minHeight: 34,
