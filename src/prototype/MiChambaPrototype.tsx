@@ -6,6 +6,7 @@ import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
 import { workerRequests as initialWorkerRequests } from "../data/mockData";
 import { registerClientInMemory } from "../services/api/clientRegistration";
+import { AccessibilityProvider } from "../accessibility/AccessibilityContext";
 import type {
   RegisteredClient,
   RegisteredWorker,
@@ -35,6 +36,14 @@ const initialRegistrationDraft: RegistrationDraft = {
 };
 
 export default function MiChambaPrototype() {
+  return (
+    <AccessibilityProvider>
+      <MiChambaPrototypeContent />
+    </AccessibilityProvider>
+  );
+}
+
+function MiChambaPrototypeContent() {
   const [activeKey, setActiveKey] = useState<ScreenKey>("login");
   const [registrationDraft, setRegistrationDraft] = useState<RegistrationDraft>(initialRegistrationDraft);
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
