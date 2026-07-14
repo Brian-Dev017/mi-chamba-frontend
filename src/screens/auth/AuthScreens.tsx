@@ -5,7 +5,8 @@ import {
   styles
 } from "../../components/ui";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, Text, TextInput, View } from "react-native";
+import { Animated, Easing, Pressable, TextInput, View } from "react-native";
+import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import type { ScreenRenderProps, UserRole } from "../../types/domain";
 
 export function LoadingScreen({ authenticatedRole, navigate }: ScreenRenderProps) {

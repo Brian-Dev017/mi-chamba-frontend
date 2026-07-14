@@ -1,5 +1,6 @@
-import { Image, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { useEffect, useState } from "react";
+import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
