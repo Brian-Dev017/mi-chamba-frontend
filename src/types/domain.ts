@@ -2,7 +2,7 @@ import type { Dispatch, ReactElement, SetStateAction } from "react";
 
 export type UserRole = "client" | "worker";
 
-export type ScreenGroup = "Acceso" | "Registro" | "Verificacion" | "Trabajador";
+export type ScreenGroup = "Acceso" | "Registro" | "Verificacion" | "Cliente" | "Trabajador";
 
 export type ScreenKey =
   | "loading"
@@ -11,6 +11,8 @@ export type ScreenKey =
   | "clientPersonalInformation"
   | "clientLocation"
   | "clientPropertyType"
+  | "clientRegistrationSuccess"
+  | "clientHome"
   | "personalInformation"
   | "identity"
   | "professionalInformation"
@@ -41,7 +43,7 @@ export type RegistrationDraft = {
   firstName: string;
   lastName: string;
   birthDate: string;
-  documentType: "DNI" | "Carnet de extranjeria" | null;
+  documentType: IdentityDocumentType | null;
   documentNumber: string;
   professionalTrade: "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero" | null;
   certificateUri: string | null;
@@ -59,10 +61,14 @@ export type RegistrationDraft = {
 
 export type ClientPropertyType = "Casa" | "Departamento" | "Oficina" | "Local Comercial" | "Otros";
 
+export type IdentityDocumentType = "DNI" | "Carnet de extranjeria";
+
 export type RegisteredClient = {
   id: string;
   firstName: string;
   lastName: string;
+  documentType: IdentityDocumentType;
+  documentNumber: string;
   phone: string;
   password: string;
   address: string;
@@ -77,7 +83,7 @@ export type RegisteredWorker = {
   firstName: string;
   lastName: string;
   birthDate: string;
-  documentType: "DNI" | "Carnet de extranjeria";
+  documentType: IdentityDocumentType;
   documentNumber: string;
   password: string;
   professionalTrade: "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
@@ -104,8 +110,12 @@ export type ScreenRenderProps = {
   registerWorker: () => void;
   registeredClients: RegisteredClient[];
   registerClient: () => Promise<void>;
+  authenticatedClient: RegisteredClient | null;
+  setAuthenticatedClient: (client: RegisteredClient | null) => void;
   authenticatedWorker: RegisteredWorker | null;
   setAuthenticatedWorker: (worker: RegisteredWorker | null) => void;
+  authenticatedRole: UserRole | null;
+  setAuthenticatedRole: (role: UserRole | null) => void;
   workerRequests: WorkerJob[];
   setWorkerRequests: Dispatch<SetStateAction<WorkerJob[]>>;
 };

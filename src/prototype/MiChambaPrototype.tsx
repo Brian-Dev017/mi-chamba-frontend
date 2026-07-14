@@ -6,7 +6,13 @@ import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
 import { workerRequests as initialWorkerRequests } from "../data/mockData";
 import { registerClientInMemory } from "../services/api/clientRegistration";
-import type { RegisteredClient, RegisteredWorker, RegistrationDraft, ScreenKey } from "../types/domain";
+import type {
+  RegisteredClient,
+  RegisteredWorker,
+  RegistrationDraft,
+  ScreenKey,
+  UserRole
+} from "../types/domain";
 
 const initialRegistrationDraft: RegistrationDraft = {
   firstName: "",
@@ -38,7 +44,9 @@ export default function MiChambaPrototype() {
   const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
   const [registeredWorkers, setRegisteredWorkers] = useState<RegisteredWorker[]>([]);
   const [registeredClients, setRegisteredClients] = useState<RegisteredClient[]>([]);
+  const [authenticatedClient, setAuthenticatedClient] = useState<RegisteredClient | null>(null);
   const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
+  const [authenticatedRole, setAuthenticatedRole] = useState<UserRole | null>(null);
   const [workerRequests, setWorkerRequests] = useState(initialWorkerRequests);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
@@ -89,13 +97,22 @@ export default function MiChambaPrototype() {
   }, [profilePhotoUri, registrationDraft]);
 
   const registerClient = useCallback(async () => {
+    const documentNumber = registrationDraft.documentNumber;
+    const documentAlreadyExists =
+      registeredClients.some((client) => client.documentNumber === documentNumber) ||
+      registeredWorkers.some((worker) => worker.documentNumber === documentNumber);
+
+    if (documentAlreadyExists) {
+      throw new Error("Ya existe una cuenta registrada con este documento.");
+    }
+
     const client = await registerClientInMemory(registrationDraft);
 
     setRegisteredClients((currentClients) => [
-      ...currentClients.filter((currentClient) => currentClient.phone !== client.phone),
+      ...currentClients.filter((currentClient) => currentClient.documentNumber !== client.documentNumber),
       client
     ]);
-  }, [registrationDraft]);
+  }, [registeredClients, registeredWorkers, registrationDraft]);
 
   const screenProps = {
     navigate: setActiveKey,
@@ -116,8 +133,12 @@ export default function MiChambaPrototype() {
     registerWorker,
     registeredClients,
     registerClient,
+    authenticatedClient,
+    setAuthenticatedClient,
     authenticatedWorker,
     setAuthenticatedWorker,
+    authenticatedRole,
+    setAuthenticatedRole,
     workerRequests,
     setWorkerRequests
   };

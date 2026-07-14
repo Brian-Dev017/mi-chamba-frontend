@@ -26,6 +26,10 @@ import {
   WorkerHomeScreen,
   WorkerProfileScreen
 } from "../screens/worker/WorkerScreens";
+import {
+  ClientHomeScreen,
+  ClientRegistrationSuccessScreen
+} from "../screens/client/ClientScreens";
 
 export const screenRegistry: ScreenDefinition[] = [
   { key: "loading", title: "LOADING", group: "Acceso", render: LoadingScreen },
@@ -53,6 +57,18 @@ export const screenRegistry: ScreenDefinition[] = [
     title: "CLIENTE TIPO DE INMUEBLE",
     group: "Registro",
     render: ClientPropertyTypeScreen
+  },
+  {
+    key: "clientRegistrationSuccess",
+    title: "REGISTRO CLIENTE EXITOSO",
+    group: "Registro",
+    render: ClientRegistrationSuccessScreen
+  },
+  {
+    key: "clientHome",
+    title: "PRINCIPAL-CLIENTE",
+    group: "Cliente",
+    render: ClientHomeScreen
   },
   {
     key: "personalInformation",

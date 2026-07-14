@@ -1,4 +1,5 @@
 import type { RegisteredClient, RegistrationDraft } from "../../types/domain";
+import { isValidDocumentNumber } from "../validation/identityDocument";
 
 const isSecurePassword = (value: string) =>
   value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
@@ -22,6 +23,10 @@ export async function registerClientInMemory(draft: RegistrationDraft): Promise<
     throw new Error("Completa el nombre y apellido del cliente.");
   }
 
+  if (!isValidDocumentNumber(draft.documentType, draft.documentNumber)) {
+    throw new Error("Ingresa un documento de identidad valido.");
+  }
+
   if (phone.length !== 9) {
     throw new Error("Ingresa un celular valido de 9 digitos.");
   }
@@ -39,9 +44,11 @@ export async function registerClientInMemory(draft: RegistrationDraft): Promise<
   }
 
   return {
-    id: `client-${phone}`,
+    id: `client-${draft.documentNumber}`,
     firstName,
     lastName,
+    documentType: draft.documentType!,
+    documentNumber: draft.documentNumber,
     phone,
     password: draft.clientPassword,
     address,

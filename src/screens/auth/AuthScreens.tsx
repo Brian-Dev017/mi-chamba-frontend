@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, TextInput, View } from "react-native";
 import type { ScreenRenderProps, UserRole } from "../../types/domain";
 
-export function LoadingScreen({ navigate }: ScreenRenderProps) {
+export function LoadingScreen({ authenticatedRole, navigate }: ScreenRenderProps) {
   const rotation = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -31,14 +31,14 @@ export function LoadingScreen({ navigate }: ScreenRenderProps) {
 
     const timer = setTimeout(() => {
       spin.stop();
-      navigate("workerHome");
+      navigate(authenticatedRole === "client" ? "clientHome" : authenticatedRole === "worker" ? "workerHome" : "login");
     }, 1800);
 
     return () => {
       clearTimeout(timer);
       spin.stop();
     };
-  }, [navigate, opacity, rotation]);
+  }, [authenticatedRole, navigate, opacity, rotation]);
 
   const rotate = rotation.interpolate({
     inputRange: [0, 1],
@@ -63,8 +63,11 @@ export function LoadingScreen({ navigate }: ScreenRenderProps) {
 
 export function LoginScreen({
   navigate,
+  registeredClients,
   registeredWorkers,
   resetRegistrationDraft,
+  setAuthenticatedClient,
+  setAuthenticatedRole,
   setAuthenticatedWorker
 }: ScreenRenderProps) {
   const [dni, setDni] = useState("");
@@ -74,17 +77,22 @@ export function LoginScreen({
   const [showInvalidCredentials, setShowInvalidCredentials] = useState(false);
 
   const handleLogin = () => {
+    const client = registeredClients.find(
+      (registeredClient) => registeredClient.documentNumber === dni && registeredClient.password === password
+    );
     const worker = registeredWorkers.find(
       (registeredWorker) => registeredWorker.documentNumber === dni && registeredWorker.password === password
     );
 
-    if (!worker) {
+    if (!client && !worker) {
       setShowInvalidCredentials(true);
       return;
     }
 
     setShowInvalidCredentials(false);
-    setAuthenticatedWorker(worker);
+    setAuthenticatedClient(client ?? null);
+    setAuthenticatedWorker(worker ?? null);
+    setAuthenticatedRole(client ? "client" : "worker");
     navigate("loading");
   };
 
@@ -111,10 +119,13 @@ export function LoginScreen({
         <LoginField
           icon="person-outline"
           keyboardType="numeric"
-          label="DNI / Usuario"
-          maxLength={8}
-          onChangeText={(value) => setDni(value.replace(/\D/g, "").slice(0, 8))}
-          placeholder="12345678"
+          label="Documento / Usuario"
+          maxLength={9}
+          onChangeText={(value) => {
+            setDni(value.replace(/\D/g, "").slice(0, 9));
+            setShowInvalidCredentials(false);
+          }}
+          placeholder="DNI o carnet de extranjeria"
           value={dni}
         />
         <LoginField

@@ -22,7 +22,18 @@ import {
   ScreenFrame,
   styles
 } from "../../components/ui";
-import type { ClientPropertyType, ScreenKey, ScreenRenderProps } from "../../types/domain";
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
+import {
+  getDocumentLength,
+  isValidDocumentNumber,
+  sanitizeDocumentNumber
+} from "../../services/validation/identityDocument";
+import type {
+  ClientPropertyType,
+  IdentityDocumentType,
+  ScreenKey,
+  ScreenRenderProps
+} from "../../types/domain";
 
 const sanitizeLetters = (value: string) => value.replace(/[^A-Za-z\u00C0-\u017F\s]/g, "");
 const sanitizeDigits = (value: string, maxLength: number) => value.replace(/\D/g, "").slice(0, maxLength);
@@ -65,7 +76,6 @@ const monthLabels = [
 
 const weekdayLabels = ["D", "L", "M", "M", "J", "V", "S"];
 
-type IdentityDocumentType = "DNI" | "Carnet de extranjeria";
 type DniSide = "ANVERSO" | "REVERSO";
 type ProfessionalTrade = "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
 
@@ -186,15 +196,28 @@ export function ClientPersonalInformationScreen({
   setRegistrationDraft
 }: ScreenRenderProps) {
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const [documentTouched, setDocumentTouched] = useState(false);
+  const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
-  const { clientPassword, clientPasswordConfirmation, clientPhone, firstName, lastName } = registrationDraft;
+  const {
+    clientPassword,
+    clientPasswordConfirmation,
+    clientPhone,
+    documentNumber,
+    documentType,
+    firstName,
+    lastName
+  } = registrationDraft;
+  const expectedDocumentLength = getDocumentLength(documentType);
+  const isDocumentValid = isValidDocumentNumber(documentType, documentNumber);
   const isPhoneValid = clientPhone.length === 9;
   const isPasswordValid = isSecurePassword(clientPassword);
   const doPasswordsMatch = clientPassword.length > 0 && clientPassword === clientPasswordConfirmation;
   const canContinue =
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
+    isDocumentValid &&
     isPhoneValid &&
     isPasswordValid &&
     doPasswordsMatch;
@@ -261,6 +284,36 @@ export function ClientPersonalInformationScreen({
                 placeholder="Perez Fernandez"
                 value={lastName}
               />
+              <View style={local.personalFieldBlock}>
+                <Text style={local.personalFieldLabel}>Tipo de documento</Text>
+                <Pressable onPress={() => setIsDocumentMenuOpen(true)} style={local.identitySelectShell}>
+                  <Text style={[local.identitySelectText, !documentType && local.identitySelectPlaceholder]}>
+                    {documentType ?? "Seleccionar documento"}
+                  </Text>
+                  <Ionicons name="chevron-down" size={22} color="#B6BEC9" />
+                </Pressable>
+              </View>
+              <PersonalField
+                editable={Boolean(documentType)}
+                inputMode="numeric"
+                keyboardType={Platform.OS === "android" ? "numeric" : "number-pad"}
+                label="Numero de documento"
+                maxLength={expectedDocumentLength}
+                onChangeText={(value) => {
+                  setDocumentTouched(true);
+                  setRegistrationDraft((currentDraft) => ({
+                    ...currentDraft,
+                    documentNumber: sanitizeDocumentNumber(value, currentDraft.documentType)
+                  }));
+                }}
+                placeholder={documentType ? `Ingresa ${expectedDocumentLength} numeros` : "Selecciona primero el tipo"}
+                value={documentNumber}
+              />
+              {documentTouched && documentType && !isDocumentValid ? (
+                <Text style={local.clientValidationText}>
+                  {documentType} debe tener {expectedDocumentLength} numeros.
+                </Text>
+              ) : null}
               <PersonalField
                 inputMode="numeric"
                 keyboardType="number-pad"
@@ -310,14 +363,7 @@ export function ClientPersonalInformationScreen({
           </View>
         </ScrollView>
         <View style={local.personalFooter}>
-        <View style={local.singleActionStepBlock}>
-          <Text style={local.stepText}>Paso 1 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={local.personalStepBar} />
-            <View style={local.personalStepBar} />
-          </View>
-        </View>
+        <RegistrationStepProgress layout="single" step={1} />
         <Pressable
           disabled={!canContinue}
           onPress={() => navigate("clientLocation")}
@@ -328,6 +374,36 @@ export function ClientPersonalInformationScreen({
         </Pressable>
         </View>
       </KeyboardAvoidingView>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isDocumentMenuOpen}
+        onRequestClose={() => setIsDocumentMenuOpen(false)}
+      >
+        <Pressable style={local.documentMenuOverlay} onPress={() => setIsDocumentMenuOpen(false)}>
+          <View style={local.documentMenuCard}>
+            <Text style={local.documentMenuTitle}>Tipo de documento</Text>
+            {identityDocumentOptions.map((option) => (
+              <Pressable
+                key={option}
+                onPress={() => {
+                  setRegistrationDraft((currentDraft) => ({
+                    ...currentDraft,
+                    documentType: option,
+                    documentNumber: ""
+                  }));
+                  setDocumentTouched(false);
+                  setIsDocumentMenuOpen(false);
+                }}
+                style={local.documentMenuOption}
+              >
+                <Text style={local.documentMenuOptionText}>{option}</Text>
+                {documentType === option ? <Ionicons name="checkmark" size={20} color="#1976D2" /> : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
       <RegistrationExitConfirmation
         intent={exitIntent}
         onCancel={() => setExitIntent(null)}
@@ -507,16 +583,12 @@ export function ClientLocationScreen({
           </View>
         </ScrollView>
         <View style={local.identityFooter}>
-        <View style={local.dualActionStepBlock}>
-          <Text style={local.stepText}>Paso 2 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={local.personalStepBar} />
-          </View>
-        </View>
+        <RegistrationStepProgress step={2} />
         <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
-          <Pressable onPress={() => navigate("clientPersonalInformation")} style={local.backButton}>
+          <Pressable
+            onPress={() => setExitIntent({ action: "back", target: "clientPersonalInformation" })}
+            style={local.backButton}
+          >
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
             <Text style={local.nextButtonText}>Regresar</Text>
           </Pressable>
@@ -548,14 +620,24 @@ export function ClientPropertyTypeScreen({
   setRegistrationDraft
 }: ScreenRenderProps) {
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationError, setRegistrationError] = useState("");
   const { clientPropertyType, clientReferenceDetails } = registrationDraft;
 
   const handleConfirmExit = () => {
+    if (!exitIntent) {
+      return;
+    }
+
+    const { action, target } = exitIntent;
     setExitIntent(null);
-    resetRegistrationDraft();
-    navigate("login");
+
+    if (action === "cancel") {
+      resetRegistrationDraft();
+    }
+
+    navigate(target);
   };
 
   const finishRegistration = async () => {
@@ -569,7 +651,7 @@ export function ClientPropertyTypeScreen({
     try {
       await registerClient();
       resetRegistrationDraft();
-      navigate("login");
+      navigate("clientRegistrationSuccess");
     } catch (error) {
       setRegistrationError(
         error instanceof Error ? error.message : "No se pudo completar el registro. Intenta nuevamente."
@@ -678,7 +760,7 @@ export function ClientPropertyTypeScreen({
 
             <Pressable
               disabled={!clientPropertyType || isSubmitting}
-              onPress={finishRegistration}
+              onPress={() => setIsFinishConfirmOpen(true)}
               style={({ pressed }) => [
                 local.clientFinishButton,
                 (!clientPropertyType || isSubmitting) && local.clientFinishButtonDisabled,
@@ -698,16 +780,12 @@ export function ClientPropertyTypeScreen({
           </View>
         </ScrollView>
         <View style={local.identityFooter}>
-        <View style={local.dualActionStepBlock}>
-          <Text style={local.stepText}>Paso 3 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          </View>
-        </View>
+        <RegistrationStepProgress step={3} />
         <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
-          <Pressable onPress={() => navigate("clientLocation")} style={local.backButton}>
+          <Pressable
+            onPress={() => setExitIntent({ action: "back", target: "clientLocation" })}
+            style={local.backButton}
+          >
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
             <Text style={local.nextButtonText}>Regresar</Text>
           </Pressable>
@@ -719,6 +797,18 @@ export function ClientPropertyTypeScreen({
         intent={exitIntent}
         onCancel={() => setExitIntent(null)}
         onConfirm={handleConfirmExit}
+      />
+      <ConfirmationDialog
+        cancelLabel="Revisar datos"
+        confirmLabel="Crear cuenta"
+        message="Confirma que los datos ingresados son correctos para crear tu cuenta de cliente."
+        onCancel={() => setIsFinishConfirmOpen(false)}
+        onConfirm={() => {
+          setIsFinishConfirmOpen(false);
+          void finishRegistration();
+        }}
+        title="Finalizar registro?"
+        visible={isFinishConfirmOpen}
       />
     </View>
   );
@@ -898,14 +988,7 @@ export function PersonalInformationScreen({
           </View>
         </ScrollView>
         <View style={[local.personalFooter, local.workerPersonalFooter]}>
-        <View style={[local.singleActionStepBlock, local.workerPersonalStepBlock]}>
-          <Text style={local.stepText}>Paso 1 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={local.personalStepBar} />
-            <View style={local.personalStepBar} />
-          </View>
-        </View>
+        <RegistrationStepProgress layout="worker" step={1} />
         <Pressable
           disabled={!canContinue}
           onPress={() => navigate("identity")}
@@ -958,6 +1041,41 @@ function RegistrationExitConfirmation({
       title={isCanceling ? "Cancelar registro?" : "Regresar al paso anterior?"}
       visible={Boolean(intent)}
     />
+  );
+}
+
+function RegistrationStepProgress({
+  layout = "dual",
+  step
+}: {
+  layout?: "dual" | "single" | "worker";
+  step: 1 | 2 | 3;
+}) {
+  const isKeyboardVisible = useKeyboardVisibility();
+
+  if (isKeyboardVisible) {
+    return null;
+  }
+
+  const containerStyle =
+    layout === "worker"
+      ? [local.singleActionStepBlock, local.workerPersonalStepBlock]
+      : layout === "single"
+        ? local.singleActionStepBlock
+        : local.dualActionStepBlock;
+
+  return (
+    <View style={containerStyle}>
+      <Text style={local.stepText}>Paso {step} de 3</Text>
+      <View style={local.personalStepRow}>
+        {[1, 2, 3].map((value) => (
+          <View
+            key={value}
+            style={[local.personalStepBar, value <= step && local.personalStepBarActive]}
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -1254,14 +1372,7 @@ export function IdentityScreen({
           </View>
         </ScrollView>
         <View style={[local.identityFooter, local.workerIdentityFooter]}>
-        <View style={local.dualActionStepBlock}>
-          <Text style={local.stepText}>Paso 2 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={local.personalStepBar} />
-          </View>
-        </View>
+        <RegistrationStepProgress step={2} />
         <View style={local.identityFooterActions}>
           <Pressable onPress={() => setExitIntent({ action: "back", target: "personalInformation" })} style={local.backButton}>
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
@@ -1431,14 +1542,7 @@ export function ProfessionalInformationScreen({
             Finalizar registro
           </Text>
         </Pressable>
-        <View style={local.dualActionStepBlock}>
-          <Text style={local.stepText}>Paso 3 de 3</Text>
-          <View style={local.personalStepRow}>
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-            <View style={[local.personalStepBar, local.personalStepBarActive]} />
-          </View>
-        </View>
+        <RegistrationStepProgress step={3} />
         <Pressable
           onPress={() => setExitIntent({ action: "back", target: "identity" })}
           style={[local.backButton, local.professionalBackButton]}
