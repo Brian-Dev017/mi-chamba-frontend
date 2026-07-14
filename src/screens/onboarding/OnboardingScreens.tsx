@@ -11,11 +11,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View
 } from "react-native";
 import type { TextInputProps } from "react-native";
+import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import {
   ConfirmationDialog,
   Ionicons,
@@ -222,9 +222,12 @@ export function ClientPersonalInformationScreen({
         style={local.clientKeyboardArea}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={local.clientBodyScroll}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          style={local.keyboardScroll}
         >
           <View style={local.clientPersonalScreen}>
             <View style={local.personalHeader}>
@@ -430,9 +433,12 @@ export function ClientLocationScreen({
         style={local.clientKeyboardArea}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={local.clientBodyScroll}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          style={local.keyboardScroll}
         >
           <View style={local.clientLocationScreen}>
             <View style={local.personalHeader}>
@@ -583,9 +589,12 @@ export function ClientPropertyTypeScreen({
         style={local.clientKeyboardArea}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={local.clientPropertyBodyScroll}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          style={local.keyboardScroll}
         >
           <View style={local.clientPropertyScreen}>
             <View style={local.personalHeader}>
@@ -794,9 +803,12 @@ export function PersonalInformationScreen({
       >
         <ScrollView
           ref={workerPersonalScrollRef}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={local.workerPersonalBodyScroll}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          style={local.keyboardScroll}
         >
           <View style={local.personalScreen}>
             <View style={local.personalHeader}>
@@ -1183,9 +1195,12 @@ export function IdentityScreen({
         style={local.identityKeyboardArea}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={local.identityScreen}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          style={local.keyboardScroll}
         >
           <View style={local.personalHeader}>
             <View style={local.personalTitleBlock}>
@@ -2219,6 +2234,9 @@ const local = {
     flex: 1,
     backgroundColor: "#F4F7FB"
   },
+  keyboardScroll: {
+    flex: 1
+  },
   clientBodyScroll: {
     flexGrow: 1
   },
@@ -3123,7 +3141,6 @@ const local = {
   },
   documentCameraScreen: {
     flex: 1,
-    minHeight: 744,
     backgroundColor: "#2F343A"
   },
   documentCameraOverlay: {
@@ -3883,7 +3900,6 @@ const local = {
   },
   cameraScreen: {
     flex: 1,
-    minHeight: 744,
     backgroundColor: "#3C4147"
   },
   cameraPermissionPanel: {

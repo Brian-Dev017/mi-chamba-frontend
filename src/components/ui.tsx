@@ -7,13 +7,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { palette } from "../theme/palette";
+import { ResponsiveText as Text } from "./ResponsiveText";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -37,11 +37,13 @@ export function ScreenFrame({
   const content = scrollable ? (
     <ScrollView
       style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
+      automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
       contentContainerStyle={[
         styles.screenContent,
         noPadding && styles.screenContentNoPadding,
         centered && styles.centerContent
       ]}
+      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -324,7 +326,7 @@ export { Ionicons, palette };
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
   keyboardFrame: { flex: 1, backgroundColor: palette.paper },
-  screenContent: { flexGrow: 1, padding: 20, paddingBottom: 34, minHeight: 744, gap: 16 },
+  screenContent: { flexGrow: 1, padding: 20, paddingBottom: 34, gap: 16 },
   screenContentNoPadding: { padding: 0, paddingBottom: 0, gap: 0 },
   centerContent: { justifyContent: "center", alignItems: "center" },
   gradientScreen: { backgroundColor: palette.ink },
