@@ -48,6 +48,7 @@ function navigateWorkerSection(navigate: ScreenRenderProps["navigate"], section:
 export function WorkerHomeScreen({
   authenticatedWorker,
   navigate,
+  setAuthenticatedRole,
   setAuthenticatedWorker,
   workerRequests,
   setWorkerRequests
@@ -69,6 +70,7 @@ export function WorkerHomeScreen({
 
     if (modalState.type === "logout") {
       setAuthenticatedWorker(null);
+      setAuthenticatedRole(null);
       navigate("login");
     } else {
       setWorkerRequests((currentJobs) => currentJobs.filter((job) => job.id !== modalState.job.id));
@@ -398,7 +400,12 @@ export function MyJobsScreen({ navigate }: ScreenRenderProps) {
     </WorkerShell>
   );
 }
-export function WorkerProfileScreen({ authenticatedWorker, navigate, setAuthenticatedWorker }: ScreenRenderProps) {
+export function WorkerProfileScreen({
+  authenticatedWorker,
+  navigate,
+  setAuthenticatedRole,
+  setAuthenticatedWorker
+}: ScreenRenderProps) {
   const [isAvailable, setIsAvailable] = useState(true);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
@@ -505,6 +512,7 @@ export function WorkerProfileScreen({ authenticatedWorker, navigate, setAuthenti
         onConfirm={() => {
           setShowLogoutConfirmation(false);
           setAuthenticatedWorker(null);
+          setAuthenticatedRole(null);
           navigate("login");
         }}
       />

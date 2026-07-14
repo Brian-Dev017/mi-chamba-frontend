@@ -1422,6 +1422,7 @@ export function ProfessionalInformationScreen({
   const [isTradeMenuOpen, setIsTradeMenuOpen] = useState(false);
   const [certificateTouched, setCertificateTouched] = useState(false);
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const [registrationError, setRegistrationError] = useState("");
   const trade = registrationDraft.professionalTrade;
   const certificateUri = registrationDraft.certificateUri;
 
@@ -1463,6 +1464,19 @@ export function ProfessionalInformationScreen({
     }
 
     navigate(target);
+  };
+
+  const finishWorkerRegistration = () => {
+    setRegistrationError("");
+
+    try {
+      registerWorker();
+      navigate("workerConfirmation");
+    } catch (error) {
+      setRegistrationError(
+        error instanceof Error ? error.message : "No se pudo completar el registro. Intenta nuevamente."
+      );
+    }
   };
 
   return (
@@ -1527,15 +1541,18 @@ export function ProfessionalInformationScreen({
             <Text style={local.professionalOptionalText}>Puedes continuar sin certificado.</Text>
           ) : null}
         </View>
+        {registrationError ? (
+          <View style={local.clientRegistrationError}>
+            <Ionicons name="alert-circle-outline" size={18} color="#C92A2A" />
+            <Text style={local.clientRegistrationErrorText}>{registrationError}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={local.professionalFooter}>
         <Pressable
           disabled={!trade}
-          onPress={() => {
-            registerWorker();
-            navigate("workerConfirmation");
-          }}
+          onPress={finishWorkerRegistration}
           style={[local.finishRegistrationButton, !trade && local.finishRegistrationButtonDisabled]}
         >
           <Text style={[local.finishRegistrationText, !trade && local.nextButtonTextDisabled]}>

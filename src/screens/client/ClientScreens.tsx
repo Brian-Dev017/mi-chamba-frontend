@@ -1,7 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
-import { Ionicons, ScreenFrame } from "../../components/ui";
+import { ConfirmationDialog, Ionicons, ScreenFrame } from "../../components/ui";
 import { palette } from "../../theme/palette";
 import type { ScreenRenderProps } from "../../types/domain";
 
@@ -18,6 +18,8 @@ type ActiveNeed = {
     receivedAgo: string;
   } | null;
 };
+
+type ClientSection = "Inicio" | "Publicaciones" | "Perfil";
 
 const activeNeed: ActiveNeed = {
   id: "need-001",
@@ -54,13 +56,52 @@ export function ClientRegistrationSuccessScreen({ navigate }: ScreenRenderProps)
   );
 }
 
-export function ClientHomeScreen({ authenticatedClient }: ScreenRenderProps) {
-  const insets = useSafeAreaInsets();
+export function ClientHomeScreen({
+  authenticatedClient,
+  navigate,
+  setAuthenticatedClient,
+  setAuthenticatedRole
+}: ScreenRenderProps) {
+  const [activeSection, setActiveSection] = useState<ClientSection>("Inicio");
+  const [currentNeed, setCurrentNeed] = useState<ActiveNeed>(activeNeed);
+  const [isComposerVisible, setComposerVisible] = useState(false);
+  const [isLogoutConfirmationVisible, setLogoutConfirmationVisible] = useState(false);
+  const [isResponseExpanded, setResponseExpanded] = useState(false);
+  const [needDraft, setNeedDraft] = useState("");
   const clientName = authenticatedClient
     ? `${authenticatedClient.firstName} ${authenticatedClient.lastName}`.trim()
     : "Brian Monteza";
   const location = authenticatedClient?.address || "Chiclayo, Peru";
-  const navigationHeight = 62 + Math.max(insets.bottom, 8);
+  const navigationHeight = 70;
+
+  const publishNeed = () => {
+    const title = needDraft.trim();
+
+    if (!title) {
+      return;
+    }
+
+    setCurrentNeed({
+      id: `need-${Date.now()}`,
+      title,
+      property: authenticatedClient?.propertyType ?? "Vivienda",
+      location: authenticatedClient?.address || "Chiclayo",
+      publishedAgo: "Ahora",
+      interestedWorkers: 0,
+      latestResponse: null
+    });
+    setNeedDraft("");
+    setComposerVisible(false);
+    setResponseExpanded(false);
+    setActiveSection("Publicaciones");
+  };
+
+  const logout = () => {
+    setLogoutConfirmationVisible(false);
+    setAuthenticatedClient(null);
+    setAuthenticatedRole(null);
+    navigate("login");
+  };
 
   return (
     <View style={local.homeScreen}>
@@ -86,37 +127,103 @@ export function ClientHomeScreen({ authenticatedClient }: ScreenRenderProps) {
         </View>
 
         <View style={local.homeBody}>
-          <View style={local.newNeedPanel}>
-            <View style={local.newNeedCopy}>
-              <Text style={local.newNeedTitle}>¿Tienes otra necesidad?</Text>
-            </View>
-            <Pressable style={local.newNeedButton}>
-              <Ionicons name="add" size={19} color={palette.white} />
-              <Text style={local.newNeedButtonText}>Publicar otra</Text>
-            </Pressable>
-          </View>
+          {activeSection !== "Perfil" ? (
+            <>
+              <View style={local.newNeedPanel}>
+                <View style={local.newNeedCopy}>
+                  <Text style={local.newNeedTitle}>¿Tienes otra necesidad?</Text>
+                </View>
+                <Pressable onPress={() => setComposerVisible(true)} style={local.newNeedButton}>
+                  <Ionicons name="add" size={19} color={palette.white} />
+                  <Text style={local.newNeedButtonText}>Publicar otra</Text>
+                </Pressable>
+              </View>
 
-          <Text style={local.sectionTitle}>Tu publicacion activa</Text>
-          <ActiveNeedCard need={activeNeed} />
+              {isComposerVisible ? (
+                <View style={local.composerPanel}>
+                  <Text style={local.composerTitle}>Describe tu necesidad</Text>
+                  <TextInput
+                    maxLength={160}
+                    multiline
+                    onChangeText={setNeedDraft}
+                    placeholder="Ej.: Necesito reparar una fuga de agua en la cocina"
+                    placeholderTextColor="#8A97A4"
+                    style={local.composerInput}
+                    textAlignVertical="top"
+                    value={needDraft}
+                  />
+                  <View style={local.composerActions}>
+                    <Pressable onPress={() => setComposerVisible(false)} style={local.composerCancelButton}>
+                      <Text style={local.composerCancelText}>Cancelar</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!needDraft.trim()}
+                      onPress={publishNeed}
+                      style={[local.composerPublishButton, !needDraft.trim() && local.disabledButton]}
+                    >
+                      <Text style={[local.composerPublishText, !needDraft.trim() && local.disabledButtonText]}>
+                        Publicar
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
 
-          <Text style={local.sectionTitle}>Actividad reciente</Text>
-          <WorkerResponsePreview response={activeNeed.latestResponse} />
+              <Text style={local.sectionTitle}>
+                {activeSection === "Publicaciones" ? "Mis publicaciones" : "Tu publicacion activa"}
+              </Text>
+              <ActiveNeedCard
+                need={currentNeed}
+                onViewResponses={() => setResponseExpanded((current) => !current)}
+              />
 
-          <View style={local.safetyNote}>
-            <Ionicons name="shield-checkmark-outline" size={21} color={palette.blue} />
-            <Text style={local.safetyText}>
-              Revisa la identidad, el oficio y la propuesta antes de contactar al trabajador.
-            </Text>
-          </View>
+              {isResponseExpanded && currentNeed.latestResponse ? (
+                <View style={local.expandedResponse}>
+                  <Text style={local.expandedResponseLabel}>Respuesta seleccionada</Text>
+                  <WorkerResponsePreview response={currentNeed.latestResponse} />
+                </View>
+              ) : null}
+
+              {activeSection === "Inicio" ? (
+                <>
+                  <Text style={local.sectionTitle}>Actividad reciente</Text>
+                  <WorkerResponsePreview response={currentNeed.latestResponse} />
+                  <View style={local.safetyNote}>
+                    <Ionicons name="shield-checkmark-outline" size={21} color={palette.blue} />
+                    <Text style={local.safetyText}>
+                      Revisa la identidad, el oficio y la propuesta antes de contactar al trabajador.
+                    </Text>
+                  </View>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <ClientProfile
+              address={location}
+              document={authenticatedClient?.documentNumber ?? "No disponible"}
+              name={clientName}
+              phone={authenticatedClient?.phone ?? "No disponible"}
+              onLogout={() => setLogoutConfirmationVisible(true)}
+            />
+          )}
         </View>
       </ScrollView>
 
-      <ClientBottomNavigation bottomInset={Math.max(insets.bottom, 8)} />
+      <ClientBottomNavigation active={activeSection} onNavigate={setActiveSection} />
+      <ConfirmationDialog
+        cancelLabel="Permanecer"
+        confirmLabel="Cerrar sesion"
+        message="Tendras que ingresar nuevamente tu documento y contrasena para volver."
+        onCancel={() => setLogoutConfirmationVisible(false)}
+        onConfirm={logout}
+        title="Cerrar sesion?"
+        visible={isLogoutConfirmationVisible}
+      />
     </View>
   );
 }
 
-function ActiveNeedCard({ need }: { need: ActiveNeed }) {
+function ActiveNeedCard({ need, onViewResponses }: { need: ActiveNeed; onViewResponses: () => void }) {
   const hasResponses = need.interestedWorkers > 0;
 
   return (
@@ -151,7 +258,11 @@ function ActiveNeedCard({ need }: { need: ActiveNeed }) {
         </View>
       </View>
 
-      <Pressable disabled={!hasResponses} style={[local.responsesButton, !hasResponses && local.disabledButton]}>
+      <Pressable
+        disabled={!hasResponses}
+        onPress={onViewResponses}
+        style={[local.responsesButton, !hasResponses && local.disabledButton]}
+      >
         <Text style={[local.responsesButtonText, !hasResponses && local.disabledButtonText]}>Ver respuestas</Text>
         <Ionicons name="arrow-forward" size={18} color={hasResponses ? palette.white : palette.muted} />
       </Pressable>
@@ -185,12 +296,66 @@ function WorkerResponsePreview({ response }: { response: ActiveNeed["latestRespo
   );
 }
 
-function ClientBottomNavigation({ bottomInset }: { bottomInset: number }) {
+function ClientProfile({
+  address,
+  document,
+  name,
+  onLogout,
+  phone
+}: {
+  address: string;
+  document: string;
+  name: string;
+  onLogout: () => void;
+  phone: string;
+}) {
   return (
-    <View style={[local.bottomNavigation, { paddingBottom: bottomInset }] }>
-      <ClientNavItem active icon="home" label="Inicio" />
-      <ClientNavItem icon="reader-outline" label="Publicaciones" />
-      <ClientNavItem icon="person-outline" label="Perfil" />
+    <View>
+      <Text style={local.profileTitle}>Mi perfil</Text>
+      <View style={local.profileIdentity}>
+        <View style={local.profileAvatar}><Ionicons name="person" size={26} color={palette.white} /></View>
+        <View style={local.profileNameCopy}>
+          <Text style={local.profileName}>{name}</Text>
+          <Text style={local.profileVerified}>Identidad registrada</Text>
+        </View>
+      </View>
+      <View style={local.profileDetails}>
+        <ProfileDetail icon="card-outline" label="Documento" value={document} />
+        <ProfileDetail icon="call-outline" label="Celular" value={phone} />
+        <ProfileDetail icon="location-outline" label="Ubicacion" value={address} />
+      </View>
+      <Pressable onPress={onLogout} style={local.logoutButton}>
+        <Ionicons name="log-out-outline" size={19} color="#C92A2A" />
+        <Text style={local.logoutButtonText}>Cerrar sesion</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ProfileDetail({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={local.profileDetailRow}>
+      <Ionicons name={icon} size={20} color={palette.blue} />
+      <View style={local.profileDetailCopy}>
+        <Text style={local.profileDetailLabel}>{label}</Text>
+        <Text style={local.profileDetailValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ClientBottomNavigation({
+  active,
+  onNavigate
+}: {
+  active: ClientSection;
+  onNavigate: (section: ClientSection) => void;
+}) {
+  return (
+    <View style={local.bottomNavigation}>
+      <ClientNavItem active={active === "Inicio"} icon="home" label="Inicio" onPress={() => onNavigate("Inicio")} />
+      <ClientNavItem active={active === "Publicaciones"} icon="reader-outline" label="Publicaciones" onPress={() => onNavigate("Publicaciones")} />
+      <ClientNavItem active={active === "Perfil"} icon="person-outline" label="Perfil" onPress={() => onNavigate("Perfil")} />
     </View>
   );
 }
@@ -198,14 +363,16 @@ function ClientBottomNavigation({ bottomInset }: { bottomInset: number }) {
 function ClientNavItem({
   active = false,
   icon,
-  label
+  label,
+  onPress
 }: {
   active?: boolean;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityState={{ selected: active }} style={local.navItem}>
+    <Pressable accessibilityState={{ selected: active }} onPress={onPress} style={local.navItem}>
       <View style={[local.navIconWrap, active && local.navIconWrapActive]}>
         <Ionicons name={icon} size={20} color={active ? palette.ink : palette.muted} />
       </View>
@@ -239,6 +406,14 @@ const local = StyleSheet.create({
   newNeedTitle: { color: palette.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   newNeedButton: { minHeight: 40, borderRadius: 20, paddingHorizontal: 13, backgroundColor: palette.ink, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   newNeedButtonText: { color: palette.white, fontSize: 12, fontWeight: "900" },
+  composerPanel: { marginTop: 10, padding: 14, borderRadius: 17, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
+  composerTitle: { color: palette.ink, fontSize: 14, fontWeight: "900", marginBottom: 9 },
+  composerInput: { minHeight: 88, borderRadius: 13, borderWidth: 1, borderColor: "#B9C8D6", color: palette.ink, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingVertical: 10 },
+  composerActions: { flexDirection: "row", justifyContent: "flex-end", gap: 9, marginTop: 10 },
+  composerCancelButton: { minHeight: 39, borderRadius: 20, paddingHorizontal: 15, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: palette.line },
+  composerCancelText: { color: palette.ink, fontSize: 13, fontWeight: "800" },
+  composerPublishButton: { minHeight: 39, borderRadius: 20, paddingHorizontal: 18, alignItems: "center", justifyContent: "center", backgroundColor: palette.blue },
+  composerPublishText: { color: palette.white, fontSize: 13, fontWeight: "900" },
   sectionTitle: { color: palette.ink, fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 20, marginBottom: 10 },
   needCard: { padding: 15, borderRadius: 17, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
   needMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
@@ -271,9 +446,24 @@ const local = StyleSheet.create({
   activityMessage: { color: palette.inkSoft, fontSize: 13, lineHeight: 19, marginTop: 7 },
   activityEmpty: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 16, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
   activityEmptyText: { flex: 1, color: palette.muted, fontSize: 13, lineHeight: 18 },
+  expandedResponse: { marginTop: 12 },
+  expandedResponseLabel: { color: palette.ink, fontSize: 12, fontWeight: "900", marginBottom: 7 },
   safetyNote: { flexDirection: "row", alignItems: "flex-start", gap: 9, marginTop: 13, padding: 12, borderRadius: 14, backgroundColor: "#EAF1F7" },
   safetyText: { flex: 1, color: palette.inkSoft, fontSize: 12, lineHeight: 18 },
-  bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: 62, paddingTop: 5, backgroundColor: palette.white, borderTopWidth: 1, borderTopColor: palette.line, flexDirection: "row" },
+  profileTitle: { color: palette.ink, fontSize: 20, fontWeight: "900", marginBottom: 16 },
+  profileIdentity: { flexDirection: "row", alignItems: "center", gap: 12, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: palette.line },
+  profileAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: palette.ink },
+  profileNameCopy: { flex: 1 },
+  profileName: { color: palette.ink, fontSize: 17, fontWeight: "900" },
+  profileVerified: { color: palette.blue, fontSize: 12, fontWeight: "700", marginTop: 3 },
+  profileDetails: { marginTop: 5 },
+  profileDetailRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 11, borderBottomWidth: 1, borderBottomColor: "#E7ECF2" },
+  profileDetailCopy: { flex: 1 },
+  profileDetailLabel: { color: palette.muted, fontSize: 11, fontWeight: "700" },
+  profileDetailValue: { color: palette.ink, fontSize: 14, lineHeight: 19, fontWeight: "700", marginTop: 2 },
+  logoutButton: { minHeight: 44, marginTop: 22, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.softRed, borderWidth: 1, borderColor: "#F4B4B4" },
+  logoutButtonText: { color: "#C92A2A", fontSize: 14, fontWeight: "900" },
+  bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: 70, paddingTop: 5, paddingBottom: 8, backgroundColor: palette.white, borderTopWidth: 1, borderTopColor: palette.line, flexDirection: "row" },
   navItem: { flex: 1, minHeight: 50, alignItems: "center", justifyContent: "center", gap: 2 },
   navIconWrap: { width: 42, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   navIconWrapActive: { backgroundColor: "#DCE6F0" },

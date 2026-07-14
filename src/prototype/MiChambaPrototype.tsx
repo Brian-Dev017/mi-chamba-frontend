@@ -77,6 +77,14 @@ export default function MiChambaPrototype() {
       return;
     }
 
+    const documentAlreadyExists =
+      registeredClients.some((client) => client.documentNumber === documentNumber) ||
+      registeredWorkers.some((worker) => worker.documentNumber === documentNumber);
+
+    if (documentAlreadyExists) {
+      throw new Error("Ya existe una cuenta registrada con este documento.");
+    }
+
     const worker: RegisteredWorker = {
       id: documentNumber,
       firstName: firstName.trim(),
@@ -94,7 +102,7 @@ export default function MiChambaPrototype() {
       ...currentWorkers.filter((currentWorker) => currentWorker.documentNumber !== documentNumber),
       worker
     ]);
-  }, [profilePhotoUri, registrationDraft]);
+  }, [profilePhotoUri, registeredClients, registeredWorkers, registrationDraft]);
 
   const registerClient = useCallback(async () => {
     const documentNumber = registrationDraft.documentNumber;
