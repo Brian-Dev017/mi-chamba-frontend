@@ -25,7 +25,12 @@ export function ResponsiveText({ style, ...props }: ResponsiveTextProps) {
   const flattenedStyle = StyleSheet.flatten(style);
   const fontSize =
     typeof flattenedStyle?.fontSize === "number"
-      ? Math.round(flattenedStyle.fontSize * responsiveScale * 10) / 10
+      ? Math.round(
+          Math.max(
+            flattenedStyle.fontSize * responsiveScale,
+            Math.min(flattenedStyle.fontSize, 8)
+          ) * 10
+        ) / 10
       : undefined;
   const lineHeight =
     typeof flattenedStyle?.lineHeight === "number"

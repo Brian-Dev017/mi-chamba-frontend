@@ -309,9 +309,7 @@ export function ClientPersonalInformationScreen({
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-
-      <View style={local.personalFooter}>
+        <View style={local.personalFooter}>
         <View style={local.singleActionStepBlock}>
           <Text style={local.stepText}>Paso 1 de 3</Text>
           <View style={local.personalStepRow}>
@@ -328,7 +326,8 @@ export function ClientPersonalInformationScreen({
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
           <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
         </Pressable>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
       <RegistrationExitConfirmation
         intent={exitIntent}
         onCancel={() => setExitIntent(null)}
@@ -507,9 +506,7 @@ export function ClientLocationScreen({
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-
-      <View style={local.identityFooter}>
+        <View style={local.identityFooter}>
         <View style={local.dualActionStepBlock}>
           <Text style={local.stepText}>Paso 2 de 3</Text>
           <View style={local.personalStepRow}>
@@ -532,7 +529,8 @@ export function ClientLocationScreen({
             <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
           </Pressable>
         </View>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
       <RegistrationExitConfirmation
         intent={exitIntent}
         onCancel={() => setExitIntent(null)}
@@ -699,9 +697,7 @@ export function ClientPropertyTypeScreen({
             </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-
-      <View style={local.identityFooter}>
+        <View style={local.identityFooter}>
         <View style={local.dualActionStepBlock}>
           <Text style={local.stepText}>Paso 3 de 3</Text>
           <View style={local.personalStepRow}>
@@ -716,7 +712,8 @@ export function ClientPropertyTypeScreen({
             <Text style={local.nextButtonText}>Regresar</Text>
           </Pressable>
         </View>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
 
       <RegistrationExitConfirmation
         intent={exitIntent}
@@ -900,9 +897,7 @@ export function PersonalInformationScreen({
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-
-      <View style={[local.personalFooter, local.workerPersonalFooter]}>
+        <View style={[local.personalFooter, local.workerPersonalFooter]}>
         <View style={[local.singleActionStepBlock, local.workerPersonalStepBlock]}>
           <Text style={local.stepText}>Paso 1 de 3</Text>
           <View style={local.personalStepRow}>
@@ -919,7 +914,8 @@ export function PersonalInformationScreen({
           <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
           <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
         </Pressable>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
       <BirthDateCalendar
         maxDate={maxAdultBirthDate}
         month={calendarMonth}
@@ -1257,9 +1253,7 @@ export function IdentityScreen({
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-
-      <View style={[local.identityFooter, local.workerIdentityFooter]}>
+        <View style={[local.identityFooter, local.workerIdentityFooter]}>
         <View style={local.dualActionStepBlock}>
           <Text style={local.stepText}>Paso 2 de 3</Text>
           <View style={local.personalStepRow}>
@@ -1282,7 +1276,8 @@ export function IdentityScreen({
             <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
           </Pressable>
         </View>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
 
       <Modal animationType="fade" transparent visible={isDocumentMenuOpen} onRequestClose={() => setIsDocumentMenuOpen(false)}>
         <Pressable style={local.documentMenuOverlay} onPress={() => setIsDocumentMenuOpen(false)}>
@@ -3167,7 +3162,8 @@ const local = {
     maxWidth: 260
   },
   documentCameraFrame: {
-    width: 330,
+    width: "100%" as const,
+    maxWidth: 330,
     height: 238,
     alignItems: "center" as const,
     justifyContent: "center" as const,
@@ -3175,7 +3171,8 @@ const local = {
     marginTop: 74
   },
   documentCameraViewport: {
-    width: 306,
+    width: "92.7%" as const,
+    maxWidth: 306,
     height: 194,
     borderRadius: 14,
     overflow: "hidden" as const,
@@ -3187,7 +3184,8 @@ const local = {
   },
   documentCameraBorder: {
     position: "absolute" as const,
-    width: 306,
+    width: "92.7%" as const,
+    maxWidth: 306,
     height: 194,
     borderRadius: 14,
     borderWidth: 2,
@@ -3977,7 +3975,8 @@ const local = {
     opacity: 0.9
   },
   cameraFaceGuide: {
-    width: 296,
+    width: "100%" as const,
+    maxWidth: 296,
     height: 382,
     alignItems: "center" as const,
     justifyContent: "center" as const,
