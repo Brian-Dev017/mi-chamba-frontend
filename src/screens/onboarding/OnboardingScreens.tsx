@@ -1337,7 +1337,7 @@ export function IdentityScreen({
       <View style={local.personalTopBand} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+        keyboardVerticalOffset={0}
         style={local.identityKeyboardArea}
       >
         <ScrollView
