@@ -34,6 +34,7 @@ import type {
   ScreenKey,
   ScreenRenderProps
 } from "../../types/domain";
+import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 
 const sanitizeLetters = (value: string) => value.replace(/[^A-Za-z\u00C0-\u017F\s]/g, "");
 const sanitizeDigits = (value: string, maxLength: number) => value.replace(/\D/g, "").slice(0, maxLength);
@@ -631,6 +632,8 @@ export function ClientPropertyTypeScreen({
   resetRegistrationDraft,
   setRegistrationDraft
 }: ScreenRenderProps) {
+  const { highContrast } = useAccessibility();
+  const accessibleReferenceStyle = useAccessibleInputStyle(14);
   const isKeyboardVisible = useKeyboardVisibility();
   const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
   const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false);
@@ -675,7 +678,7 @@ export function ClientPropertyTypeScreen({
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, highContrast && styles.highContrastScreen]}>
       <View style={local.personalTopBand} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -743,7 +746,7 @@ export function ClientPropertyTypeScreen({
 
             <View style={local.clientReferenceBlock}>
               <Text style={local.personalFieldLabel}>Detalles de referencia</Text>
-              <View style={local.clientReferenceShell}>
+              <View style={[local.clientReferenceShell, highContrast && local.highContrastInputShell]}>
                 <TextInput
                   maxLength={180}
                   multiline
@@ -756,7 +759,7 @@ export function ClientPropertyTypeScreen({
                   }
                   placeholder="Ej: puerta azul, segundo piso (opcional)"
                   placeholderTextColor="#A5AFBA"
-                  style={local.clientReferenceInput}
+                  style={[local.clientReferenceInput, accessibleReferenceStyle]}
                   textAlignVertical="top"
                   value={clientReferenceDetails}
                 />
@@ -1137,10 +1140,12 @@ function PersonalField({
   secureTextEntry?: boolean;
   value: string;
 }) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(16);
   return (
     <View style={local.personalFieldBlock}>
       <Text style={local.personalFieldLabel}>{label}</Text>
-      <View style={[local.personalInputShell, !editable && local.personalInputShellDisabled]}>
+      <View style={[local.personalInputShell, highContrast && local.highContrastInputShell, !editable && local.personalInputShellDisabled]}>
         <TextInput
           editable={editable}
           inputMode={inputMode}
@@ -1151,7 +1156,7 @@ function PersonalField({
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
           secureTextEntry={secureTextEntry}
-          style={[local.personalInput, !editable && local.personalInputDisabled]}
+          style={[local.personalInput, accessibleInputStyle, !editable && local.personalInputDisabled]}
           value={value}
         />
         {icon ? (
@@ -2855,6 +2860,11 @@ const local = {
     paddingHorizontal: 13,
     flexDirection: "row" as const,
     alignItems: "center" as const
+  },
+  highContrastInputShell: {
+    borderColor: "#000000",
+    borderWidth: 2,
+    backgroundColor: "#FFFFFF"
   },
   personalInputShellDisabled: {
     borderColor: "#C9D1DB",

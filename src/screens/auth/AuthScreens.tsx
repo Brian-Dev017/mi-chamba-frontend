@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, TextInput, View } from "react-native";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import type { ScreenRenderProps, UserRole } from "../../types/domain";
+import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 
 export function LoadingScreen({ authenticatedRole, navigate }: ScreenRenderProps) {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -204,10 +205,12 @@ function LoginField({
   toggleIcon?: keyof typeof Ionicons.glyphMap;
   value?: string;
 }) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(16);
   return (
     <View style={local.loginFieldBlock}>
       <Text style={local.loginFieldLabel}>{label}</Text>
-      <View style={local.loginInputShell}>
+      <View style={[local.loginInputShell, highContrast && local.highContrastInputShell]}>
         <Ionicons name={icon} size={20} color="#1677F2" />
         <TextInput
           keyboardType={keyboardType}
@@ -216,7 +219,7 @@ function LoginField({
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
           secureTextEntry={secure}
-          style={local.loginInput}
+          style={[local.loginInput, accessibleInputStyle]}
           value={value}
         />
         {toggleIcon && onToggleSecure ? (
@@ -369,6 +372,7 @@ const local = {
     gap: 6
   },
   loginInput: { flex: 1, color: "#021B30", fontSize: 16, paddingVertical: 0 },
+  highContrastInputShell: { borderColor: "#000000", borderWidth: 2, backgroundColor: "#FFFFFF" },
   loginOptionsRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,

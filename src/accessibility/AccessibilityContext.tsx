@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import type { TextStyle } from "react-native";
 
 export type AccessibilityTextSize = "normal" | "large" | "extraLarge";
 
@@ -63,6 +64,18 @@ export function useAccessibility() {
   return useContext(AccessibilityContext);
 }
 
+export function useAccessibleInputStyle(baseFontSize = 16): TextStyle {
+  const { dyslexiaFriendly, highContrast, textSizeScale } = useAccessibility();
+  const fontSize = Math.round(baseFontSize * textSizeScale * 10) / 10;
+
+  return {
+    color: highContrast ? "#000000" : undefined,
+    fontSize,
+    lineHeight: dyslexiaFriendly ? Math.round(fontSize * 1.45 * 10) / 10 : undefined,
+    letterSpacing: dyslexiaFriendly ? 0.35 : undefined
+  };
+}
+
 export const highContrastPalette = {
   background: "#FFFFFF",
   surface: "#FFFFFF",
@@ -74,4 +87,3 @@ export const highContrastPalette = {
   danger: "#A00000",
   success: "#006B2D"
 };
-

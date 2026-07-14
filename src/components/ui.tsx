@@ -14,6 +14,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { palette } from "../theme/palette";
 import { ResponsiveText as Text } from "./ResponsiveText";
+import {
+  highContrastPalette,
+  useAccessibility,
+  useAccessibleInputStyle
+} from "../accessibility/AccessibilityContext";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -34,9 +39,16 @@ export function ScreenFrame({
   noPadding?: boolean;
   scrollable?: boolean;
 }) {
+  const { highContrast } = useAccessibility();
+  const screenStyle = [
+    styles.screen,
+    gradient && styles.gradientScreen,
+    darkTop && styles.darkTopScreen,
+    highContrast && !gradient && !darkTop && styles.highContrastScreen
+  ];
   const content = scrollable ? (
     <ScrollView
-      style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
+      style={screenStyle}
       automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
       contentContainerStyle={[
         styles.screenContent,
@@ -51,7 +63,7 @@ export function ScreenFrame({
     </ScrollView>
   ) : (
     <View
-      style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
+      style={screenStyle}
     >
       <View
         style={[
@@ -72,7 +84,7 @@ export function ScreenFrame({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.keyboardFrame}
+      style={[styles.keyboardFrame, highContrast && styles.highContrastScreen]}
     >
       {content}
     </KeyboardAvoidingView>
@@ -90,6 +102,7 @@ export function WorkerShell({
   onNavigate?: (item: "Solicitudes" | "Mis Trabajos" | "Perfil") => void;
   showNavigation?: boolean;
 }) {
+  const { highContrast } = useAccessibility();
   const insets = useSafeAreaInsets();
   const topInset = -2;
   const contentBottomInset = showNavigation
@@ -98,7 +111,7 @@ export function WorkerShell({
   const navBottomInset = Math.max(insets.bottom, 8);
 
   return (
-    <View style={styles.workerScreen}>
+    <View style={[styles.workerScreen, highContrast && styles.highContrastScreen]}>
       <View style={[styles.workerTopBand, { marginTop: topInset }]} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View
@@ -112,9 +125,9 @@ export function WorkerShell({
         </View>
       </ScrollView>
       {showNavigation ? (
-        <View style={[styles.bottomNav, { paddingBottom: navBottomInset, minHeight: 50 + navBottomInset }]}>
+        <View style={[styles.bottomNav, highContrast && styles.highContrastNav, { paddingBottom: navBottomInset, minHeight: 50 + navBottomInset }]}>
           {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
-            <Pressable key={item} onPress={() => onNavigate?.(item)} style={[styles.navItem, active === item && styles.navItemActive]}>
+            <Pressable key={item} onPress={() => onNavigate?.(item)} style={[styles.navItem, active === item && styles.navItemActive, highContrast && active === item && styles.highContrastNavActive]}>
               {active === item && <View style={styles.navActiveLine} />}
               <Ionicons
                 name={
@@ -125,7 +138,7 @@ export function WorkerShell({
                       : "person-outline"
                 }
                 size={20}
-                color={active === item ? palette.ink : palette.muted}
+                color={highContrast ? (active === item ? highContrastPalette.primary : highContrastPalette.text) : active === item ? palette.ink : palette.muted}
               />
               <Text style={[styles.navText, active === item && styles.navTextActive]}>{item}</Text>
             </Pressable>
@@ -160,15 +173,17 @@ export function Field({
   icon?: IconName;
   secure?: boolean;
 }) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(16);
   return (
     <View style={styles.fieldBlock}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputShell}>
+      <View style={[styles.inputShell, highContrast && styles.highContrastInputShell]}>
         <TextInput
           placeholder={placeholder}
           placeholderTextColor={palette.muted}
           secureTextEntry={secure}
-          style={styles.input}
+          style={[styles.input, accessibleInputStyle]}
         />
         {icon ? <Ionicons name={icon} size={20} color={palette.muted} /> : null}
       </View>
@@ -292,6 +307,7 @@ export function ConfirmationDialog({
   visible: boolean;
 }) {
   const { height, width } = useWindowDimensions();
+  const { highContrast } = useAccessibility();
 
   return (
     <Modal
@@ -303,7 +319,7 @@ export function ConfirmationDialog({
       onRequestClose={onCancel}
     >
       <View style={[styles.confirmOverlay, { minHeight: height, width }]}>
-        <View style={styles.confirmCard}>
+        <View style={[styles.confirmCard, highContrast && styles.highContrastDialog]}>
           <View style={styles.confirmIconWrap}>
             <Ionicons name="alert-circle-outline" size={30} color={palette.red} />
           </View>
@@ -325,6 +341,7 @@ export { Ionicons, palette };
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
+  highContrastScreen: { backgroundColor: highContrastPalette.background },
   keyboardFrame: { flex: 1, backgroundColor: palette.paper },
   screenContent: { flexGrow: 1, padding: 20, paddingBottom: 34, gap: 16 },
   screenContentNoPadding: { padding: 0, paddingBottom: 0, gap: 0 },
@@ -354,6 +371,8 @@ export const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 8
   },
+  highContrastNav: { backgroundColor: highContrastPalette.surface, borderTopColor: highContrastPalette.border, borderTopWidth: 2 },
+  highContrastNavActive: { backgroundColor: highContrastPalette.primarySoft, borderWidth: 1, borderColor: highContrastPalette.primary },
   navItem: {
     flex: 1,
     alignItems: "center",
@@ -381,6 +400,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center"
   },
+  highContrastInputShell: { borderColor: highContrastPalette.border, borderWidth: 2, backgroundColor: highContrastPalette.surface },
   input: { flex: 1, color: palette.ink, fontSize: 16 },
   primaryButton: {
     minHeight: 52,
@@ -469,6 +489,11 @@ export const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
     gap: 12
+  },
+  highContrastDialog: {
+    borderWidth: 2,
+    borderColor: highContrastPalette.border,
+    backgroundColor: highContrastPalette.surface
   },
   confirmIconWrap: {
     width: 50,

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { ConfirmationDialog, Ionicons, ScreenFrame } from "../../components/ui";
 import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
-import { useAccessibility } from "../../accessibility/AccessibilityContext";
+import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 import { palette } from "../../theme/palette";
 import type { ScreenRenderProps } from "../../types/domain";
 
@@ -64,7 +64,8 @@ export function ClientHomeScreen({
   setAuthenticatedClient,
   setAuthenticatedRole
 }: ScreenRenderProps) {
-  const { resetAccessibility } = useAccessibility();
+  const { highContrast, resetAccessibility } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(14);
   const [activeSection, setActiveSection] = useState<ClientSection>("Inicio");
   const [isAccessibilityVisible, setAccessibilityVisible] = useState(false);
   const [currentNeed, setCurrentNeed] = useState<ActiveNeed>(activeNeed);
@@ -109,7 +110,7 @@ export function ClientHomeScreen({
   };
 
   return (
-    <View style={local.homeScreen}>
+    <View style={[local.homeScreen, highContrast && local.highContrastScreen]}>
       <ScrollView
         contentContainerStyle={[local.homeScrollContent, { paddingBottom: navigationHeight + 18 }]}
         showsVerticalScrollIndicator={false}
@@ -134,7 +135,7 @@ export function ClientHomeScreen({
         <View style={local.homeBody}>
           {activeSection !== "Perfil" ? (
             <>
-              <View style={local.newNeedPanel}>
+                <View style={[local.newNeedPanel, highContrast && local.highContrastSoftPanel]}>
                 <View style={local.newNeedCopy}>
                   <Text style={local.newNeedTitle}>¿Tienes otra necesidad?</Text>
                 </View>
@@ -145,7 +146,7 @@ export function ClientHomeScreen({
               </View>
 
               {isComposerVisible ? (
-                <View style={local.composerPanel}>
+                <View style={[local.composerPanel, highContrast && local.highContrastCard]}>
                   <Text style={local.composerTitle}>Describe tu necesidad</Text>
                   <TextInput
                     maxLength={160}
@@ -153,7 +154,7 @@ export function ClientHomeScreen({
                     onChangeText={setNeedDraft}
                     placeholder="Ej.: Necesito reparar una fuga de agua en la cocina"
                     placeholderTextColor="#8A97A4"
-                    style={local.composerInput}
+                    style={[local.composerInput, accessibleInputStyle, highContrast && local.highContrastInput]}
                     textAlignVertical="top"
                     value={needDraft}
                   />
@@ -234,10 +235,11 @@ export function ClientHomeScreen({
 }
 
 function ActiveNeedCard({ need, onViewResponses }: { need: ActiveNeed; onViewResponses: () => void }) {
+  const { highContrast } = useAccessibility();
   const hasResponses = need.interestedWorkers > 0;
 
   return (
-    <View style={local.needCard}>
+    <View style={[local.needCard, highContrast && local.highContrastCard]}>
       <View style={local.needMetaRow}>
         <View style={local.statusPill}>
           <View style={local.statusDot} />
@@ -281,9 +283,10 @@ function ActiveNeedCard({ need, onViewResponses }: { need: ActiveNeed; onViewRes
 }
 
 function WorkerResponsePreview({ response }: { response: ActiveNeed["latestResponse"] }) {
+  const { highContrast } = useAccessibility();
   if (!response) {
     return (
-      <View style={local.activityEmpty}>
+      <View style={[local.activityEmpty, highContrast && local.highContrastCard]}>
         <Ionicons name="chatbubble-ellipses-outline" size={23} color={palette.muted} />
         <Text style={local.activityEmptyText}>Aun no hay respuestas para esta publicacion.</Text>
       </View>
@@ -291,7 +294,7 @@ function WorkerResponsePreview({ response }: { response: ActiveNeed["latestRespo
   }
 
   return (
-    <View style={local.activityRow}>
+    <View style={[local.activityRow, highContrast && local.highContrastCard]}>
       <View style={local.activityAvatar}>
         <Text style={local.activityInitials}>JP</Text>
       </View>
@@ -321,6 +324,7 @@ function ClientProfile({
   onLogout: () => void;
   phone: string;
 }) {
+  const { highContrast } = useAccessibility();
   return (
     <View>
       <Text style={local.profileTitle}>Mi perfil</Text>
@@ -341,7 +345,7 @@ function ClientProfile({
         accessibilityLabel="Accesibilidad"
         accessibilityRole="button"
         onPress={onOpenAccessibility}
-        style={local.profileAccessibilityButton}
+        style={[local.profileAccessibilityButton, highContrast && local.highContrastCard]}
       >
         <View style={local.profileAccessibilityIcon}>
           <Ionicons name="accessibility-outline" size={21} color={palette.blue} />
@@ -379,8 +383,9 @@ function ClientBottomNavigation({
   active: ClientSection;
   onNavigate: (section: ClientSection) => void;
 }) {
+  const { highContrast } = useAccessibility();
   return (
-    <View style={local.bottomNavigation}>
+    <View style={[local.bottomNavigation, highContrast && local.highContrastNavigation]}>
       <ClientNavItem active={active === "Inicio"} icon="home" label="Inicio" onPress={() => onNavigate("Inicio")} />
       <ClientNavItem active={active === "Publicaciones"} icon="reader-outline" label="Publicaciones" onPress={() => onNavigate("Publicaciones")} />
       <ClientNavItem active={active === "Perfil"} icon="person-outline" label="Perfil" onPress={() => onNavigate("Perfil")} />
@@ -418,6 +423,11 @@ const local = StyleSheet.create({
   successButton: { width: "100%", minHeight: 48, borderRadius: 24, marginTop: 16, backgroundColor: palette.ink, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   successButtonText: { color: palette.white, fontSize: 15, fontWeight: "900" },
   homeScreen: { flex: 1, backgroundColor: palette.paper },
+  highContrastScreen: { backgroundColor: "#FFFFFF" },
+  highContrastCard: { backgroundColor: "#FFFFFF", borderColor: "#000000", borderWidth: 2 },
+  highContrastSoftPanel: { backgroundColor: "#DCEEFF", borderColor: "#000000", borderWidth: 2 },
+  highContrastInput: { color: "#000000", borderColor: "#000000", borderWidth: 2, backgroundColor: "#FFFFFF" },
+  highContrastNavigation: { backgroundColor: "#FFFFFF", borderTopColor: "#000000", borderTopWidth: 2 },
   homeScrollContent: { flexGrow: 1 },
   homeHeader: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 20, backgroundColor: palette.ink, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerMainRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },

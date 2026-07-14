@@ -2,7 +2,7 @@ import { Image, Modal, Pressable, ScrollView, Switch, TextInput, View } from "re
 import { useEffect, useState } from "react";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
-import { useAccessibility } from "../../accessibility/AccessibilityContext";
+import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 import { requestDetail, workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
@@ -141,6 +141,8 @@ export function WorkerHomeScreen({
 }
 
 export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRenderProps) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(14);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
@@ -263,7 +265,7 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
       <Modal animationType="slide" transparent visible={isMessageSheetOpen} onRequestClose={() => setIsMessageSheetOpen(false)}>
         <View style={local.messageSheetOverlay}>
           <Pressable style={local.messageSheetScrim} onPress={() => setIsMessageSheetOpen(false)} />
-          <View style={local.messageSheet}>
+          <View style={[local.messageSheet, highContrast && local.highContrastCard]}>
             <View style={local.messageSheetHandle} />
             <Text style={local.messageSheetTitle}>Mensaje al cliente</Text>
             <Text style={local.messageSheetSubtitle}>Coordina detalles antes de aceptar el trabajo.</Text>
@@ -279,7 +281,7 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
               onChangeText={setMessageDraft}
               placeholder="Escribe tu mensaje aqui"
               placeholderTextColor="#8A96A3"
-              style={local.messageInput}
+              style={[local.messageInput, accessibleInputStyle, highContrast && local.highContrastInput]}
               textAlignVertical="top"
               value={messageDraft}
             />
@@ -419,7 +421,7 @@ export function WorkerProfileScreen({
   setAuthenticatedRole,
   setAuthenticatedWorker
 }: ScreenRenderProps) {
-  const { resetAccessibility } = useAccessibility();
+  const { highContrast, resetAccessibility } = useAccessibility();
   const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -475,7 +477,7 @@ export function WorkerProfileScreen({
               accessibilityLabel="Accesibilidad"
               accessibilityRole="button"
               onPress={() => setShowAccessibilitySettings(true)}
-              style={local.accessibilityButton}
+              style={[local.accessibilityButton, highContrast && local.highContrastAccessibilityButton]}
             >
               <Ionicons name="accessibility-outline" size={18} color="#1976D2" />
             </Pressable>
@@ -1003,6 +1005,22 @@ const local = {
     backgroundColor: "#EAF2F8",
     borderWidth: 1,
     borderColor: "#D8E5F0"
+  },
+  highContrastAccessibilityButton: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#000000",
+    borderWidth: 2
+  },
+  highContrastCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#000000",
+    borderWidth: 2
+  },
+  highContrastInput: {
+    color: "#000000",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#000000",
+    borderWidth: 2
   },
   profileSectionTitle: { color: "#2D3A46", fontSize: 14, fontWeight: "600" as const, marginTop: 8 },
   earningsCard: { borderRadius: 12, padding: 22, gap: 18, backgroundColor: "#021B30" },

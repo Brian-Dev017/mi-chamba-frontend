@@ -45,13 +45,20 @@ export function ResponsiveText({ style, ...props }: ResponsiveTextProps) {
         : undefined;
 
   const originalColor = typeof flattenedStyle?.color === "string" ? flattenedStyle.color.toUpperCase() : "";
+  const isBlue = ["#1976D2", "#1677F2", "#006FE6", "#00B8FF", "#00A6FF"].includes(originalColor);
+  const isRed = ["#EF4444", "#C92A2A", "#A91515"].includes(originalColor);
+  const isGreen = ["#22C55E", "#00C853"].includes(originalColor);
   const highContrastColor = !highContrast
     ? undefined
     : originalColor === "#FFFFFF" || originalColor === "WHITE"
       ? "#FFFFFF"
-      : originalColor.includes("D2") || originalColor.includes("FF")
+      : isBlue
         ? highContrastPalette.primary
-        : highContrastPalette.text;
+        : isRed
+          ? highContrastPalette.danger
+          : isGreen
+            ? highContrastPalette.success
+            : highContrastPalette.text;
 
   const accessibilityTypography = dyslexiaFriendly
     ? {
