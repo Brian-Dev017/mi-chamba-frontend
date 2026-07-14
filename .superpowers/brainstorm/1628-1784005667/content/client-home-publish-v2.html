@@ -1,0 +1,128 @@
+<style>
+  .proposal-wrap { max-width: 920px; margin: 0 auto; }
+  .state-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; align-items:start; }
+  .state-label { margin:0 0 8px; color:var(--muted-foreground); font-weight:700; text-align:center; }
+  .phone { max-width:380px; min-height:660px; margin:0 auto; background:#f4f7fb; color:#09243a; border:7px solid #101820; border-radius:28px; overflow:hidden; position:relative; box-shadow:0 14px 34px rgba(2,27,48,.16); }
+  .top { background:#021b30; color:#fff; padding:22px 16px 20px; border-radius:0 0 20px 20px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hello { margin:0 0 4px; opacity:.75; }
+  .name { margin:0; font-weight:800; }
+  .bell { width:34px; height:34px; border-radius:17px; display:grid; place-items:center; background:rgba(255,255,255,.12); }
+  .location { display:flex; align-items:center; gap:6px; margin-top:14px; opacity:.9; }
+  .body { padding:15px 14px 80px; }
+  .publish-card { background:#dceeff; border-radius:17px; padding:16px; }
+  .publish-card h4 { margin:0 0 5px; }
+  .publish-card p { margin:0 0 12px; color:#506070; }
+  .need-field { min-height:76px; background:#fff; border:1px solid #c8d8e8; border-radius:12px; padding:12px; color:#6d7b88; margin-bottom:10px; }
+  .need-tools { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .tool { display:flex; align-items:center; gap:5px; padding:6px 8px; border-radius:12px; background:rgba(255,255,255,.62); color:#25364a; }
+  .primary { width:100%; min-height:42px; border:0; border-radius:21px; background:#021b30; color:#fff; font-weight:800; }
+  .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:4px; margin:15px 0; color:#506070; text-align:center; }
+  .flow-step i { display:block; margin:0 auto 4px; color:#1976d2; }
+  .flow-arrow { color:#9aa6b2; }
+  .title { margin:15px 0 9px; font-weight:800; }
+  .category-row { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+  .category { text-align:center; color:#25364a; }
+  .category-icon { width:43px; height:43px; margin:0 auto 5px; border:1px solid #d6dee8; border-radius:13px; background:#fff; display:grid; place-items:center; color:#1976d2; }
+  .publication { background:#fff; border:1px solid #d6dee8; border-radius:15px; padding:13px; }
+  .status { display:inline-block; padding:5px 8px; border-radius:12px; background:#e8f8ff; color:#1976d2; font-weight:800; }
+  .publication h4 { margin:12px 0 5px; }
+  .publication p { margin:0; color:#6d7b88; }
+  .response-summary { display:flex; align-items:center; gap:9px; padding:12px 0; margin-top:10px; border-top:1px solid #e0e5eb; }
+  .avatars { display:flex; }
+  .avatar { width:30px; height:30px; margin-right:-7px; border:2px solid #fff; border-radius:15px; background:#021b30; color:#fff; display:grid; place-items:center; }
+  .response-copy { flex:1; }
+  .response-copy strong,.response-copy span { display:block; }
+  .response-copy span { color:#6d7b88; margin-top:2px; }
+  .secondary { width:100%; min-height:40px; border:1px solid #1976d2; border-radius:20px; background:#fff; color:#09243a; font-weight:800; }
+  .tip { display:flex; align-items:flex-start; gap:9px; margin-top:12px; padding:11px; border-radius:13px; background:#eef4fa; color:#506070; }
+  .nav { position:absolute; left:0; right:0; bottom:0; min-height:64px; display:grid; grid-template-columns:repeat(3,1fr); place-items:center; background:#fff; border-top:1px solid #d6dee8; color:#6d7b88; }
+  .nav-item { text-align:center; }
+  .nav-item i { display:block; margin:0 auto 3px; }
+  .active { color:#021b30; font-weight:800; }
+  .approval { margin-top:20px; }
+  .approval .option { max-width:620px; margin:0 auto; }
+  @media(max-width:780px){ .state-grid{grid-template-columns:1fr;} }
+</style>
+
+<div class="proposal-wrap">
+  <h2>Inicio centrado en publicar una necesidad</h2>
+  <p class="subtitle">La pantalla cambia de forma natural cuando el cliente ya tiene una publicación activa.</p>
+
+  <div class="state-grid">
+    <div>
+      <p class="state-label">Estado inicial</p>
+      <div class="phone">
+        <div class="top">
+          <div class="row"><div><p class="hello">Bienvenido</p><p class="name">Brian Monteza</p></div><div class="bell"><i data-lucide="bell"></i></div></div>
+          <div class="location"><i data-lucide="map-pin"></i> Chiclayo, Perú</div>
+        </div>
+        <div class="body">
+          <div class="publish-card">
+            <h4>¿Qué necesitas resolver hoy?</h4>
+            <p>Publica tu necesidad y recibe respuestas de trabajadores disponibles.</p>
+            <div class="need-field">Ej.: Necesito reparar una fuga de agua en la cocina…</div>
+            <div class="need-tools"><span class="tool"><i data-lucide="camera"></i> Foto</span><span class="tool"><i data-lucide="map-pin"></i> Ubicación</span></div>
+            <button class="primary">Publicar necesidad</button>
+          </div>
+          <div class="flow">
+            <div class="flow-step"><i data-lucide="square-pen"></i>Publica</div><span class="flow-arrow">›</span>
+            <div class="flow-step"><i data-lucide="users"></i>Recibe respuestas</div><span class="flow-arrow">›</span>
+            <div class="flow-step"><i data-lucide="message-circle"></i>Elige y conversa</div>
+          </div>
+          <div class="title">Necesidades frecuentes</div>
+          <div class="category-row">
+            <div class="category"><div class="category-icon"><i data-lucide="key-round"></i></div>Cerradura</div>
+            <div class="category"><div class="category-icon"><i data-lucide="wrench"></i></div>Fuga</div>
+            <div class="category"><div class="category-icon"><i data-lucide="paintbrush"></i></div>Pintura</div>
+            <div class="category"><div class="category-icon"><i data-lucide="ellipsis"></i></div>Otros</div>
+          </div>
+          <div class="tip"><i data-lucide="shield-check"></i><span>Los trabajadores muestran identidad y oficio verificados antes de que los contactes.</span></div>
+        </div>
+        <div class="nav"><div class="nav-item active"><i data-lucide="home"></i>Inicio</div><div class="nav-item"><i data-lucide="clipboard-list"></i>Publicaciones</div><div class="nav-item"><i data-lucide="user"></i>Perfil</div></div>
+      </div>
+    </div>
+
+    <div>
+      <p class="state-label">Con una necesidad publicada</p>
+      <div class="phone">
+        <div class="top">
+          <div class="row"><div><p class="hello">Bienvenido</p><p class="name">Brian Monteza</p></div><div class="bell"><i data-lucide="bell"></i></div></div>
+          <div class="location"><i data-lucide="map-pin"></i> Chiclayo, Perú</div>
+        </div>
+        <div class="body">
+          <div class="publish-card">
+            <h4>¿Tienes otra necesidad?</h4>
+            <p>Puedes publicar una nueva solicitud en cualquier momento.</p>
+            <button class="primary">Nueva publicación</button>
+          </div>
+          <div class="title">Tu publicación activa</div>
+          <div class="publication">
+            <div class="row"><span class="status">Publicada</span><span>Hace 8 min</span></div>
+            <h4>Instalación de tres tomacorrientes</h4>
+            <p>Departamento · Chiclayo</p>
+            <div class="response-summary">
+              <div class="avatars"><div class="avatar">JP</div><div class="avatar">CM</div><div class="avatar">AR</div></div>
+              <div class="response-copy"><strong>3 trabajadores interesados</strong><span>Ya puedes revisar sus perfiles</span></div>
+            </div>
+            <button class="secondary">Ver respuestas</button>
+          </div>
+          <div class="title">Actividad reciente</div>
+          <div class="publication">
+            <div class="row"><strong>Juan Pérez respondió</strong><span>2 min</span></div>
+            <p style="margin-top:8px">“Puedo realizar el trabajo hoy desde las 4:00 p. m.”</p>
+          </div>
+          <div class="tip"><i data-lucide="message-circle"></i><span>El contacto se habilita desde la respuesta del trabajador para mantener la conversación asociada a la publicación.</span></div>
+        </div>
+        <div class="nav"><div class="nav-item active"><i data-lucide="home"></i>Inicio</div><div class="nav-item"><i data-lucide="clipboard-list"></i>Publicaciones</div><div class="nav-item"><i data-lucide="user"></i>Perfil</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="approval">
+    <div class="option" data-choice="approve-publish-home" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content"><h3>Aprobar esta dirección</h3><p>Publicar necesidad es la acción principal; las respuestas y el contacto se gestionan desde cada publicación.</p></div>
+    </div>
+  </div>
+</div>
