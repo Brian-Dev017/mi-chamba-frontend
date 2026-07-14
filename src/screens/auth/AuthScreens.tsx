@@ -1,33 +1,105 @@
 import {
+  ConfirmationDialog,
   Ionicons,
-  PrimaryButton,
   ScreenFrame,
   styles
 } from "../../components/ui";
-import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, TextInput, View } from "react-native";
+import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import type { ScreenRenderProps, UserRole } from "../../types/domain";
+import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 
-export function LoadingScreen() {
+export function LoadingScreen({ authenticatedRole, navigate }: ScreenRenderProps) {
+  const rotation = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 1050,
+        easing: Easing.linear,
+        useNativeDriver: true
+      })
+    );
+
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 260,
+      useNativeDriver: true
+    }).start();
+    spin.start();
+
+    const timer = setTimeout(() => {
+      spin.stop();
+      navigate(authenticatedRole === "client" ? "clientHome" : authenticatedRole === "worker" ? "workerHome" : "login");
+    }, 1800);
+
+    return () => {
+      clearTimeout(timer);
+      spin.stop();
+    };
+  }, [authenticatedRole, navigate, opacity, rotation]);
+
+  const rotate = rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"]
+  });
+
   return (
-    <ScreenFrame centered>
-      <View style={local.loadingRing}>
-        <View style={local.logoBadge}>
-          <Text style={local.logoMark}>MC</Text>
+    <ScreenFrame noPadding scrollable={false}>
+      <View style={local.loadingTopBand} />
+      <Animated.View style={[local.loadingScreen, { opacity }]}>
+        <View style={local.loadingOrbit}>
+          <Animated.View style={[local.loadingArc, { transform: [{ rotate }] }]} />
+          <View style={local.loadingLogoBadge}>
+            <Text style={local.logoMarkBlue}>MC</Text>
+            <Text style={local.logoWordSmall}>Mi Chamba</Text>
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </ScreenFrame>
   );
 }
 
-export function LoginScreen({ navigate }: ScreenRenderProps) {
+export function LoginScreen({
+  navigate,
+  registeredClients,
+  registeredWorkers,
+  resetRegistrationDraft,
+  setAuthenticatedClient,
+  setAuthenticatedRole,
+  setAuthenticatedWorker
+}: ScreenRenderProps) {
   const [dni, setDni] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberPassword, setRememberPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showInvalidCredentials, setShowInvalidCredentials] = useState(false);
 
+  const handleLogin = () => {
+    const client = registeredClients.find(
+      (registeredClient) => registeredClient.documentNumber === dni && registeredClient.password === password
+    );
+    const worker = registeredWorkers.find(
+      (registeredWorker) => registeredWorker.documentNumber === dni && registeredWorker.password === password
+    );
+
+    if (!client && !worker) {
+      setShowInvalidCredentials(true);
+      return;
+    }
+
+    setShowInvalidCredentials(false);
+    setAuthenticatedClient(client ?? null);
+    setAuthenticatedWorker(worker ?? null);
+    setAuthenticatedRole(client ? "client" : "worker");
+    navigate("loading");
+  };
+
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.loginTopBand} />
       <View style={local.loginCard}>
         <View style={local.logoBlock}>
@@ -49,19 +121,24 @@ export function LoginScreen({ navigate }: ScreenRenderProps) {
         <LoginField
           icon="person-outline"
           keyboardType="numeric"
-          label="DNI / Usuario"
-          maxLength={8}
-          onChangeText={(value) => setDni(value.replace(/\D/g, "").slice(0, 8))}
-          placeholder="12345678"
+          label="Documento / Usuario"
+          maxLength={9}
+          onChangeText={(value) => {
+            setDni(value.replace(/\D/g, "").slice(0, 9));
+            setShowInvalidCredentials(false);
+          }}
+          placeholder="DNI o carnet de extranjeria"
           value={dni}
         />
         <LoginField
           icon="lock-closed-outline"
           label="Contrasena"
+          onChangeText={(value) => setPassword(value)}
           onToggleSecure={() => setShowPassword((current) => !current)}
           placeholder="Ingrese su contrasena"
           secure={!showPassword}
           toggleIcon={showPassword ? "eye-outline" : "eye-off-outline"}
+          value={password}
         />
 
         <View style={local.loginOptionsRow}>
@@ -79,7 +156,7 @@ export function LoginScreen({ navigate }: ScreenRenderProps) {
         </View>
 
         <Pressable
-          onPress={() => setShowInvalidCredentials(true)}
+          onPress={handleLogin}
           style={local.loginButton}
         >
           <Ionicons name="log-in-outline" size={22} color="#FFFFFF" />
@@ -91,7 +168,10 @@ export function LoginScreen({ navigate }: ScreenRenderProps) {
         <View style={styles.centerStack}>
           <Text style={local.registerPrompt}>No tienes cuenta?</Text>
           <Pressable
-            onPress={() => navigate("profileSelection")}
+            onPress={() => {
+              resetRegistrationDraft();
+              navigate("profileSelection");
+            }}
             style={({ pressed }) => [local.registerButton, pressed && local.registerButtonPressed]}
           >
             <Text style={local.registerLink}>Registrate</Text>
@@ -125,10 +205,12 @@ function LoginField({
   toggleIcon?: keyof typeof Ionicons.glyphMap;
   value?: string;
 }) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(16);
   return (
     <View style={local.loginFieldBlock}>
       <Text style={local.loginFieldLabel}>{label}</Text>
-      <View style={local.loginInputShell}>
+      <View style={[local.loginInputShell, highContrast && local.highContrastInputShell]}>
         <Ionicons name={icon} size={20} color="#1677F2" />
         <TextInput
           keyboardType={keyboardType}
@@ -137,7 +219,7 @@ function LoginField({
           placeholder={placeholder}
           placeholderTextColor="#B6BEC9"
           secureTextEntry={secure}
-          style={local.loginInput}
+          style={[local.loginInput, accessibleInputStyle]}
           value={value}
         />
         {toggleIcon && onToggleSecure ? (
@@ -150,19 +232,20 @@ function LoginField({
   );
 }
 
-export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
+export function ProfileSelectionScreen({ navigate, resetRegistrationDraft }: ScreenRenderProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   const toggleRole = (role: UserRole) => {
     setSelectedRole((currentRole) => (currentRole === role ? null : role));
   };
 
   return (
-    <ScreenFrame noPadding>
+    <ScreenFrame noPadding scrollable={false}>
       <View style={local.profileTopBand} />
       <View style={local.profileContent}>
         <Text style={local.profileIntro}>Encuentra el servicio que{"\n"}necesitas cuando lo necesitas</Text>
-        <Text style={local.profileQuestion}>Cual es tu perfil?</Text>
+        <Text style={local.profileQuestion}>¿Cuál es tu perfil?</Text>
 
         <View style={local.profileRoleGrid}>
           <RoleCard
@@ -183,9 +266,7 @@ export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
           <Pressable
             disabled={!selectedRole}
             onPress={() => {
-              if (selectedRole === "worker") {
-                navigate("personalInformation");
-              }
+              navigate(selectedRole === "client" ? "clientPersonalInformation" : "personalInformation");
             }}
             style={[local.profileContinueButton, !selectedRole && local.profileContinueButtonDisabled]}
           >
@@ -195,13 +276,25 @@ export function ProfileSelectionScreen({ navigate }: ScreenRenderProps) {
           </Pressable>
 
           <Pressable
-            onPress={() => navigate("login")}
+            onPress={() => setIsCancelConfirmOpen(true)}
             style={({ pressed }) => [local.cancelButton, pressed && local.cancelButtonPressed]}
           >
             <Text style={local.cancelButtonText}>Cancelar</Text>
           </Pressable>
         </View>
       </View>
+      <ConfirmationDialog
+        confirmLabel="Cancelar registro"
+        message="Estas cancelando el registro. Si confirmas, se perdera la informacion ingresada."
+        onCancel={() => setIsCancelConfirmOpen(false)}
+        onConfirm={() => {
+          setIsCancelConfirmOpen(false);
+          resetRegistrationDraft();
+          navigate("login");
+        }}
+        title="Cancelar registro?"
+        visible={isCancelConfirmOpen}
+      />
     </ScreenFrame>
   );
 }
@@ -234,7 +327,8 @@ function RoleCard({
 
 const local = {
   loginTopBand: {
-    height: 52,
+    height: 42,
+    marginTop: -3,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -278,6 +372,7 @@ const local = {
     gap: 6
   },
   loginInput: { flex: 1, color: "#021B30", fontSize: 16, paddingVertical: 0 },
+  highContrastInputShell: { borderColor: "#000000", borderWidth: 2, backgroundColor: "#FFFFFF" },
   loginOptionsRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -316,7 +411,8 @@ const local = {
   registerButtonPressed: { borderBottomColor: "#58A8FF", opacity: 0.72 },
   registerLink: { color: "#006FE6", fontSize: 15, fontWeight: "800" as const },
   profileTopBand: {
-    height: 60,
+    height: 42,
+    marginTop: -3,
     backgroundColor: "#021B30",
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14
@@ -420,6 +516,45 @@ const local = {
   profileContinueButtonDisabled: { backgroundColor: "#D6DEE8" },
   profileContinueText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" as const },
   profileContinueTextDisabled: { color: "#6D7B88" },
+  loadingTopBand: {
+    height: 42,
+    marginTop: 10,
+    backgroundColor: "#021B30",
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14
+  },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: "#F6F8FC",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  loadingOrbit: {
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const
+  },
+  loadingArc: {
+    position: "absolute" as const,
+    width: 164,
+    height: 164,
+    borderRadius: 82,
+    borderWidth: 16,
+    borderColor: "rgba(255, 255, 255, 0.96)",
+    borderRightColor: "#1976D2",
+    borderBottomColor: "#1976D2"
+  },
+  loadingLogoBadge: {
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: "rgba(255, 255, 255, 0.84)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
   loadingRing: {
     width: 200,
     height: 200,

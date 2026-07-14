@@ -1,77 +1,229 @@
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
-import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFonts } from "expo-font";
+import { useCallback, useMemo, useState } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
-import type { ScreenKey } from "../types/domain";
+import { workerRequests as initialWorkerRequests } from "../data/mockData";
+import { registerClientInMemory } from "../services/api/clientRegistration";
+import { AccessibilityProvider } from "../accessibility/AccessibilityContext";
+import type {
+  RegisteredClient,
+  RegisteredWorker,
+  RegistrationDraft,
+  ScreenKey,
+  UserRole
+} from "../types/domain";
+
+const initialRegistrationDraft: RegistrationDraft = {
+  firstName: "",
+  lastName: "",
+  birthDate: "",
+  documentType: null,
+  documentNumber: "",
+  professionalTrade: null,
+  certificateUri: null,
+  clientPhone: "",
+  clientPassword: "",
+  clientPasswordConfirmation: "",
+  clientAddress: "",
+  clientLatitude: null,
+  clientLongitude: null,
+  clientPropertyType: null,
+  clientReferenceDetails: "",
+  workerPassword: "",
+  workerPasswordConfirmation: ""
+};
 
 export default function MiChambaPrototype() {
+  useFonts({
+    OpenDyslexic: require("../../assets/fonts/OpenDyslexic-Regular.otf"),
+    "OpenDyslexic-Bold": require("../../assets/fonts/OpenDyslexic-Bold.otf")
+  });
+
+  return (
+    <AccessibilityProvider>
+      <MiChambaPrototypeContent />
+    </AccessibilityProvider>
+  );
+}
+
+function MiChambaPrototypeContent() {
   const [activeKey, setActiveKey] = useState<ScreenKey>("login");
+  const [registrationDraft, setRegistrationDraft] = useState<RegistrationDraft>(initialRegistrationDraft);
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const [pendingProfilePhotoUri, setPendingProfilePhotoUri] = useState<string | null>(null);
+  const [frontDniPhotoUri, setFrontDniPhotoUri] = useState<string | null>(null);
+  const [backDniPhotoUri, setBackDniPhotoUri] = useState<string | null>(null);
+  const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
+  const [registeredWorkers, setRegisteredWorkers] = useState<RegisteredWorker[]>([]);
+  const [registeredClients, setRegisteredClients] = useState<RegisteredClient[]>([]);
+  const [authenticatedClient, setAuthenticatedClient] = useState<RegisteredClient | null>(null);
+  const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
+  const [authenticatedRole, setAuthenticatedRole] = useState<UserRole | null>(null);
+  const [workerRequests, setWorkerRequests] = useState(initialWorkerRequests);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
+
+  const resetRegistrationDraft = useCallback(() => {
+    setRegistrationDraft(initialRegistrationDraft);
+    setProfilePhotoUri(null);
+    setPendingProfilePhotoUri(null);
+    setFrontDniPhotoUri(null);
+    setBackDniPhotoUri(null);
+    setPendingDniPhotoUri(null);
+  }, []);
+
+  const registerWorker = useCallback(() => {
+    const {
+      birthDate,
+      documentNumber,
+      documentType,
+      firstName,
+      lastName,
+      professionalTrade,
+      certificateUri,
+      workerPassword
+    } = registrationDraft;
+
+    if (!documentType || !professionalTrade || !documentNumber || !workerPassword) {
+      return;
+    }
+
+    const documentAlreadyExists =
+      registeredClients.some((client) => client.documentNumber === documentNumber) ||
+      registeredWorkers.some((worker) => worker.documentNumber === documentNumber);
+
+    if (documentAlreadyExists) {
+      throw new Error("Ya existe una cuenta registrada con este documento.");
+    }
+
+    const worker: RegisteredWorker = {
+      id: documentNumber,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      birthDate,
+      documentType,
+      documentNumber,
+      password: workerPassword,
+      professionalTrade,
+      certificateUri,
+      profilePhotoUri
+    };
+
+    setRegisteredWorkers((currentWorkers) => [
+      ...currentWorkers.filter((currentWorker) => currentWorker.documentNumber !== documentNumber),
+      worker
+    ]);
+  }, [profilePhotoUri, registeredClients, registeredWorkers, registrationDraft]);
+
+  const registerClient = useCallback(async () => {
+    const documentNumber = registrationDraft.documentNumber;
+    const documentAlreadyExists =
+      registeredClients.some((client) => client.documentNumber === documentNumber) ||
+      registeredWorkers.some((worker) => worker.documentNumber === documentNumber);
+
+    if (documentAlreadyExists) {
+      throw new Error("Ya existe una cuenta registrada con este documento.");
+    }
+
+    const client = await registerClientInMemory(registrationDraft);
+
+    setRegisteredClients((currentClients) => [
+      ...currentClients.filter((currentClient) => currentClient.documentNumber !== client.documentNumber),
+      client
+    ]);
+  }, [registeredClients, registeredWorkers, registrationDraft]);
+
   const screenProps = {
     navigate: setActiveKey,
+    registrationDraft,
+    setRegistrationDraft,
+    resetRegistrationDraft,
     profilePhotoUri,
     setProfilePhotoUri,
     pendingProfilePhotoUri,
-    setPendingProfilePhotoUri
+    setPendingProfilePhotoUri,
+    frontDniPhotoUri,
+    setFrontDniPhotoUri,
+    backDniPhotoUri,
+    setBackDniPhotoUri,
+    pendingDniPhotoUri,
+    setPendingDniPhotoUri,
+    registeredWorkers,
+    registerWorker,
+    registeredClients,
+    registerClient,
+    authenticatedClient,
+    setAuthenticatedClient,
+    authenticatedWorker,
+    setAuthenticatedWorker,
+    authenticatedRole,
+    setAuthenticatedRole,
+    workerRequests,
+    setWorkerRequests
   };
 
   if (Platform.OS !== "web") {
     return (
-      <SafeAreaView style={styles.nativeShell}>
-        <StatusBar style="dark" />
-        <View style={styles.nativeScreen}>
-          <ActiveScreen {...screenProps} />
-        </View>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView edges={["top", "right", "bottom", "left"]} style={styles.nativeShell}>
+          <StatusBar style="dark" />
+          <View style={styles.nativeScreen}>
+            <ActiveScreen {...screenProps} />
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaView style={styles.shell}>
-      <StatusBar style="dark" />
-      <View style={styles.previewHeader}>
-        <View>
-          <Text style={styles.previewEyebrow}>MI CHAMBA / Alta fidelidad</Text>
-          <Text style={styles.previewTitle}>{activeScreen.title}</Text>
+    <SafeAreaProvider>
+      <SafeAreaView edges={["top", "right", "bottom", "left"]} style={styles.shell}>
+        <StatusBar style="dark" />
+        <View style={styles.previewHeader}>
+          <View>
+            <Text style={styles.previewEyebrow}>MI CHAMBA / Alta fidelidad</Text>
+            <Text style={styles.previewTitle}>{activeScreen.title}</Text>
+          </View>
+          <Text style={styles.previewCount}>
+            {screens.findIndex((screen) => screen.key === activeKey) + 1}/{screens.length}
+          </Text>
         </View>
-        <Text style={styles.previewCount}>
-          {screens.findIndex((screen) => screen.key === activeKey) + 1}/{screens.length}
-        </Text>
-      </View>
 
-      <View style={styles.phoneStage}>
-        <View style={styles.phone}>
-          <ActiveScreen {...screenProps} />
+        <View style={styles.phoneStage}>
+          <View style={styles.phone}>
+            <View style={styles.phoneViewport}>
+              <ActiveScreen {...screenProps} />
+            </View>
+          </View>
         </View>
-      </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.screenRail}
-      >
-        {screens.map((screen) => (
-          <Pressable
-            key={screen.key}
-            onPress={() => setActiveKey(screen.key)}
-            style={[styles.screenChip, activeKey === screen.key && styles.screenChipActive]}
-          >
-            <Text
-              numberOfLines={1}
-              style={[styles.screenChipText, activeKey === screen.key && styles.screenChipTextActive]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.screenRail}
+        >
+          {screens.map((screen) => (
+            <Pressable
+              key={screen.key}
+              onPress={() => setActiveKey(screen.key)}
+              style={[styles.screenChip, activeKey === screen.key && styles.screenChipActive]}
             >
-              {screen.title}
-            </Text>
-            <Text style={styles.screenChipGroup}>{screen.group}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+              <Text
+                numberOfLines={1}
+                style={[styles.screenChipText, activeKey === screen.key && styles.screenChipTextActive]}
+              >
+                {screen.title}
+              </Text>
+              <Text style={styles.screenChipGroup}>{screen.group}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -130,6 +282,15 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 14 },
     elevation: 8
+  },
+  phoneViewport: {
+    flex: 1,
+    marginTop: 12,
+    marginBottom: 18,
+    marginHorizontal: 0,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: palette.white
   },
   screenRail: {
     paddingHorizontal: 12,

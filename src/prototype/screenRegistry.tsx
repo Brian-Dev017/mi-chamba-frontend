@@ -5,6 +5,10 @@ import {
   ProfileSelectionScreen
 } from "../screens/auth/AuthScreens";
 import {
+  ClientLocationScreen,
+  ClientPersonalInformationScreen,
+  ClientPropertyTypeScreen,
+  DocumentCameraScreen,
   DocumentConfirmation,
   DocumentInstruction,
   IdentityScreen,
@@ -22,6 +26,10 @@ import {
   WorkerHomeScreen,
   WorkerProfileScreen
 } from "../screens/worker/WorkerScreens";
+import {
+  ClientHomeScreen,
+  ClientRegistrationSuccessScreen
+} from "../screens/client/ClientScreens";
 
 export const screenRegistry: ScreenDefinition[] = [
   { key: "loading", title: "LOADING", group: "Acceso", render: LoadingScreen },
@@ -31,6 +39,36 @@ export const screenRegistry: ScreenDefinition[] = [
     title: "PERFIL SELECTION",
     group: "Acceso",
     render: ProfileSelectionScreen
+  },
+  {
+    key: "clientPersonalInformation",
+    title: "CLIENTE INFORMACION PERSONAL",
+    group: "Registro",
+    render: ClientPersonalInformationScreen
+  },
+  {
+    key: "clientLocation",
+    title: "CLIENTE UBICACION",
+    group: "Registro",
+    render: ClientLocationScreen
+  },
+  {
+    key: "clientPropertyType",
+    title: "CLIENTE TIPO DE INMUEBLE",
+    group: "Registro",
+    render: ClientPropertyTypeScreen
+  },
+  {
+    key: "clientRegistrationSuccess",
+    title: "REGISTRO CLIENTE EXITOSO",
+    group: "Registro",
+    render: ClientRegistrationSuccessScreen
+  },
+  {
+    key: "clientHome",
+    title: "PRINCIPAL-CLIENTE",
+    group: "Cliente",
+    render: ClientHomeScreen
   },
   {
     key: "personalInformation",
@@ -49,25 +87,37 @@ export const screenRegistry: ScreenDefinition[] = [
     key: "frontDniInstructions",
     title: "Cedula Anverso",
     group: "Verificacion",
-    render: () => <DocumentInstruction side="FRONTAL" />
+    render: (props) => <DocumentInstruction {...props} side="FRONTAL" />
   },
   {
     key: "backDniInstructions",
     title: "Cedula Reverso",
     group: "Verificacion",
-    render: () => <DocumentInstruction side="TRASERA" />
+    render: (props) => <DocumentInstruction {...props} side="TRASERA" />
+  },
+  {
+    key: "frontDniCamera",
+    title: "Camara Anverso DNI",
+    group: "Verificacion",
+    render: (props) => <DocumentCameraScreen {...props} side="ANVERSO" />
+  },
+  {
+    key: "backDniCamera",
+    title: "Camara Reverso DNI",
+    group: "Verificacion",
+    render: (props) => <DocumentCameraScreen {...props} side="REVERSO" />
   },
   {
     key: "frontDniConfirmation",
     title: "Confirmacion Anverso DNI",
     group: "Verificacion",
-    render: () => <DocumentConfirmation side="ANVERSO" />
+    render: (props) => <DocumentConfirmation {...props} side="ANVERSO" />
   },
   {
     key: "backDniConfirmation",
     title: "Confirmacion Reverso DNI",
     group: "Verificacion",
-    render: () => <DocumentConfirmation side="REVERSO" />
+    render: (props) => <DocumentConfirmation {...props} side="REVERSO" />
   },
   {
     key: "profilePhotoInstructions",

@@ -15,17 +15,29 @@
           "cameraPermission": "Mi Chamba necesita acceder a la camara para tomar tu foto de perfil.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Mi Chamba usa tu ubicacion para encontrar trabajadores cercanos y ubicar el servicio.",
+          "locationWhenInUsePermission": "Mi Chamba usa tu ubicacion para ubicar donde se dara el servicio."
+        }
+      ],
+      "expo-font"
     ],
     "ios": {
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Mi Chamba necesita acceder a la camara para tomar tu foto de perfil."
+        "NSCameraUsageDescription": "Mi Chamba necesita acceder a la camara para tomar tu foto de perfil.",
+        "NSLocationWhenInUseUsageDescription": "Mi Chamba usa tu ubicacion para ubicar donde se dara el servicio."
       }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#021B30"

@@ -1,14 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { palette } from "../theme/palette";
+import { ResponsiveText as Text } from "./ResponsiveText";
+import {
+  highContrastPalette,
+  useAccessibility,
+  useAccessibleInputStyle
+} from "../accessibility/AccessibilityContext";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -17,60 +27,124 @@ export function ScreenFrame({
   centered,
   gradient,
   darkTop,
-  noPadding
+  keyboardAware,
+  noPadding,
+  scrollable = true
 }: {
   children: ReactNode;
   centered?: boolean;
   gradient?: boolean;
   darkTop?: boolean;
+  keyboardAware?: boolean;
   noPadding?: boolean;
+  scrollable?: boolean;
 }) {
-  return (
+  const { highContrast } = useAccessibility();
+  const screenStyle = [
+    styles.screen,
+    gradient && styles.gradientScreen,
+    darkTop && styles.darkTopScreen,
+    highContrast && !gradient && !darkTop && styles.highContrastScreen
+  ];
+  const content = scrollable ? (
     <ScrollView
-      style={[styles.screen, gradient && styles.gradientScreen, darkTop && styles.darkTopScreen]}
+      style={screenStyle}
+      automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
       contentContainerStyle={[
         styles.screenContent,
         noPadding && styles.screenContentNoPadding,
         centered && styles.centerContent
       ]}
+      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
+  ) : (
+    <View
+      style={screenStyle}
+    >
+      <View
+        style={[
+          styles.screenContent,
+          noPadding && styles.screenContentNoPadding,
+          centered && styles.centerContent
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+
+  if (!keyboardAware) {
+    return content;
+  }
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.keyboardFrame, highContrast && styles.highContrastScreen]}
+    >
+      {content}
+    </KeyboardAvoidingView>
   );
 }
 
 export function WorkerShell({
   active,
-  children
+  children,
+  onNavigate,
+  showNavigation = true
 }: {
   active: "Solicitudes" | "Mis Trabajos" | "Perfil";
   children: ReactNode;
+  onNavigate?: (item: "Solicitudes" | "Mis Trabajos" | "Perfil") => void;
+  showNavigation?: boolean;
 }) {
+  const { highContrast } = useAccessibility();
+  const insets = useSafeAreaInsets();
+  const topInset = -2;
+  const contentBottomInset = showNavigation
+    ? 76 + Math.max(insets.bottom, 8)
+    : -20 + Math.max(insets.bottom, 24);
+  const navBottomInset = Math.max(insets.bottom, 8);
+
   return (
-    <View style={styles.workerScreen}>
+    <View style={[styles.workerScreen, highContrast && styles.highContrastScreen]}>
+      <View style={[styles.workerTopBand, { marginTop: topInset }]} />
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.workerContent}>{children}</View>
+        <View
+          style={[
+            styles.workerContent,
+            !showNavigation && styles.workerContentWithoutNav,
+            { paddingBottom: contentBottomInset }
+          ]}
+        >
+          {children}
+        </View>
       </ScrollView>
-      <View style={styles.bottomNav}>
-        {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
-          <View key={item} style={styles.navItem}>
-            {active === item && <View style={styles.navActiveLine} />}
-            <Ionicons
-              name={
-                item === "Solicitudes"
-                  ? "list-outline"
-                  : item === "Mis Trabajos"
-                    ? "briefcase-outline"
-                    : "person-outline"
-              }
-              size={20}
-              color={active === item ? palette.blue : palette.muted}
-            />
-            <Text style={[styles.navText, active === item && styles.navTextActive]}>{item}</Text>
-          </View>
-        ))}
-      </View>
+      {showNavigation ? (
+        <View style={[styles.bottomNav, highContrast && styles.highContrastNav, { paddingBottom: navBottomInset, minHeight: 50 + navBottomInset }]}>
+          {(["Solicitudes", "Mis Trabajos", "Perfil"] as const).map((item) => (
+            <Pressable key={item} onPress={() => onNavigate?.(item)} style={[styles.navItem, active === item && styles.navItemActive, highContrast && active === item && styles.highContrastNavActive]}>
+              {active === item && <View style={styles.navActiveLine} />}
+              <Ionicons
+                name={
+                  item === "Solicitudes"
+                    ? "list-outline"
+                    : item === "Mis Trabajos"
+                      ? "briefcase-outline"
+                      : "person-outline"
+                }
+                size={20}
+                color={highContrast ? (active === item ? highContrastPalette.primary : highContrastPalette.text) : active === item ? palette.ink : palette.muted}
+              />
+              <Text style={[styles.navText, active === item && styles.navTextActive]}>{item}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -99,15 +173,17 @@ export function Field({
   icon?: IconName;
   secure?: boolean;
 }) {
+  const { highContrast } = useAccessibility();
+  const accessibleInputStyle = useAccessibleInputStyle(16);
   return (
     <View style={styles.fieldBlock}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputShell}>
+      <View style={[styles.inputShell, highContrast && styles.highContrastInputShell]}>
         <TextInput
           placeholder={placeholder}
           placeholderTextColor={palette.muted}
           secureTextEntry={secure}
-          style={styles.input}
+          style={[styles.input, accessibleInputStyle]}
         />
         {icon ? <Ionicons name={icon} size={20} color={palette.muted} /> : null}
       </View>
@@ -213,32 +289,104 @@ export function MapPreview() {
   );
 }
 
+export function ConfirmationDialog({
+  cancelLabel = "Continuar registro",
+  confirmLabel,
+  message,
+  onCancel,
+  onConfirm,
+  title,
+  visible
+}: {
+  cancelLabel?: string;
+  confirmLabel: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+  visible: boolean;
+}) {
+  const { height, width } = useWindowDimensions();
+  const { highContrast } = useAccessibility();
+
+  return (
+    <Modal
+      animationType="fade"
+      hardwareAccelerated
+      statusBarTranslucent
+      transparent
+      visible={visible}
+      onRequestClose={onCancel}
+    >
+      <View style={[styles.confirmOverlay, { minHeight: height, width }]}>
+        <View style={[styles.confirmCard, highContrast && styles.highContrastDialog]}>
+          <View style={styles.confirmIconWrap}>
+            <Ionicons name="alert-circle-outline" size={30} color={palette.red} />
+          </View>
+          <Text style={styles.confirmTitle}>{title}</Text>
+          <Text style={styles.confirmMessage}>{message}</Text>
+          <Pressable onPress={onConfirm} style={styles.confirmDangerButton}>
+            <Text style={styles.confirmDangerText}>{confirmLabel}</Text>
+          </Pressable>
+          <Pressable onPress={onCancel} style={styles.confirmKeepButton}>
+            <Text style={styles.confirmKeepText}>{cancelLabel}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export { Ionicons, palette };
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
-  screenContent: { padding: 20, paddingBottom: 34, minHeight: 744, gap: 16 },
-  screenContentNoPadding: { padding: 0, paddingBottom: 34, gap: 0 },
+  highContrastScreen: { backgroundColor: highContrastPalette.background },
+  keyboardFrame: { flex: 1, backgroundColor: palette.paper },
+  screenContent: { flexGrow: 1, padding: 20, paddingBottom: 34, gap: 16 },
+  screenContentNoPadding: { padding: 0, paddingBottom: 0, gap: 0 },
   centerContent: { justifyContent: "center", alignItems: "center" },
   gradientScreen: { backgroundColor: palette.ink },
   darkTopScreen: { backgroundColor: palette.ink },
   workerScreen: { flex: 1, backgroundColor: palette.paper },
-  workerContent: { padding: 20, paddingBottom: 106, gap: 16 },
+  workerTopBand: {
+    height: 45,
+    backgroundColor: palette.ink,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16
+  },
+  workerContent: { padding: 16, paddingBottom: 84, gap: 14 },
+  workerContentWithoutNav: { paddingBottom: 45 },
   bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
-    height: 78,
+    bottom: -40,
+    minHeight: 64,
     backgroundColor: palette.white,
     borderTopWidth: 1,
     borderTopColor: palette.line,
     flexDirection: "row",
-    justifyContent: "space-around"
+    justifyContent: "space-around",
+    paddingTop: 4,
+    paddingBottom: 8
   },
-  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4 },
-  navActiveLine: { position: "absolute", top: 0, width: 105, height: 3, backgroundColor: palette.cyan },
-  navText: { color: palette.muted, fontSize: 12, fontWeight: "700" },
+  highContrastNav: { backgroundColor: highContrastPalette.surface, borderTopColor: highContrastPalette.border, borderTopWidth: 2 },
+  highContrastNavActive: { backgroundColor: highContrastPalette.primarySoft, borderWidth: 1, borderColor: highContrastPalette.primary },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    marginHorizontal: 8,
+    borderRadius: 16,
+    minHeight: 46
+  },
+  navItemActive: {
+    backgroundColor: "#DCE2EA"
+  },
+  navActiveLine: { position: "absolute", top: 0, width: 82, height: 3, borderRadius: 99, backgroundColor: palette.cyan },
+  navText: { color: palette.ink, fontSize: 12, fontWeight: "700" },
   navTextActive: { color: palette.ink },
   fieldBlock: { gap: 8 },
   fieldLabel: { color: palette.ink, fontSize: 14, fontWeight: "700" },
@@ -252,6 +400,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center"
   },
+  highContrastInputShell: { borderColor: highContrastPalette.border, borderWidth: 2, backgroundColor: highContrastPalette.surface },
   input: { flex: 1, color: palette.ink, fontSize: 16 },
   primaryButton: {
     minHeight: 52,
@@ -324,5 +473,75 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8
   },
-  mapLink: { color: palette.blue, fontSize: 14, fontWeight: "900" }
+  mapLink: { color: palette.blue, fontSize: 14, fontWeight: "900" },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    backgroundColor: "rgba(2, 27, 48, 0.68)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24
+  },
+  confirmCard: {
+    width: "100%",
+    borderRadius: 24,
+    backgroundColor: palette.white,
+    padding: 20,
+    alignItems: "center",
+    gap: 12
+  },
+  highContrastDialog: {
+    borderWidth: 2,
+    borderColor: highContrastPalette.border,
+    backgroundColor: highContrastPalette.surface
+  },
+  confirmIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: palette.softRed,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  confirmTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  confirmMessage: {
+    color: palette.inkSoft,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center"
+  },
+  confirmDangerButton: {
+    width: "100%",
+    minHeight: 44,
+    borderRadius: 22,
+    backgroundColor: palette.red,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4
+  },
+  confirmDangerText: {
+    color: palette.white,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  confirmKeepButton: {
+    width: "100%",
+    minHeight: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  confirmKeepText: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: "800"
+  }
 });
