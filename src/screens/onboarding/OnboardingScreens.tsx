@@ -15,16 +15,26 @@ import {
   TextInput,
   View
 } from "react-native";
+import type { TextInputProps } from "react-native";
 import {
   ConfirmationDialog,
   Ionicons,
   ScreenFrame,
   styles
 } from "../../components/ui";
-import type { ScreenKey, ScreenRenderProps } from "../../types/domain";
+import type { ClientPropertyType, ScreenKey, ScreenRenderProps } from "../../types/domain";
 
 const sanitizeLetters = (value: string) => value.replace(/[^A-Za-z\u00C0-\u017F\s]/g, "");
 const sanitizeDigits = (value: string, maxLength: number) => value.replace(/\D/g, "").slice(0, maxLength);
+const formatClientPhone = (value: string) => sanitizeDigits(value, 9).replace(/(\d{3})(?=\d)/g, "$1 ");
+const formatReverseGeocodedAddress = (address: Location.LocationGeocodedAddress) => {
+  const street = [address.streetNumber, address.street].filter(Boolean).join(" ").trim();
+  const parts = [street || address.name, address.district, address.city, address.region].filter(
+    (part, index, values): part is string => Boolean(part) && values.indexOf(part) === index
+  );
+
+  return parts.join(", ");
+};
 
 const isSecurePassword = (value: string) =>
   value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
@@ -61,6 +71,16 @@ type ProfessionalTrade = "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
 
 const identityDocumentOptions: IdentityDocumentType[] = ["DNI", "Carnet de extranjeria"];
 const professionalTradeOptions: ProfessionalTrade[] = ["Cerrajero", "Plomero", "Pintor", "Gasfitero"];
+const clientPropertyOptions: Array<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: ClientPropertyType;
+}> = [
+  { icon: "home-outline", label: "Casa" },
+  { icon: "business-outline", label: "Departamento" },
+  { icon: "briefcase-outline", label: "Oficina" },
+  { icon: "storefront-outline", label: "Local Comercial" },
+  { icon: "business-outline", label: "Otros" }
+];
 
 type ExitIntent = {
   action: "cancel" | "back";
@@ -209,7 +229,7 @@ export function ClientPersonalInformationScreen({
           <View style={local.clientPersonalScreen}>
             <View style={local.personalHeader}>
               <View style={local.personalTitleBlock}>
-                <Text style={local.personalTitle}>Informacion personal</Text>
+                <Text style={local.personalTitle}>Información personal</Text>
                 <View style={local.personalTitleUnderline} />
               </View>
               <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
@@ -239,26 +259,27 @@ export function ClientPersonalInformationScreen({
                 value={lastName}
               />
               <PersonalField
+                inputMode="numeric"
                 keyboardType="number-pad"
                 label="Celular"
-                maxLength={9}
+                maxLength={11}
                 onChangeText={(value) =>
                   setRegistrationDraft((currentDraft) => ({ ...currentDraft, clientPhone: sanitizeDigits(value, 9) }))
                 }
                 placeholder="999 999 999"
-                value={clientPhone}
+                value={formatClientPhone(clientPhone)}
               />
               {clientPhone.length > 0 && !isPhoneValid ? (
-                <Text style={local.clientValidationText}>Ingresa un celular de 9 numeros.</Text>
+                <Text style={local.clientValidationText}>Ingresa un celular de 9 números.</Text>
               ) : null}
               <PersonalField
                 icon={showPassword ? "eye-off-outline" : "eye-outline"}
-                label="Contrasena"
+                label="Contraseña"
                 onChangeText={(value) =>
                   setRegistrationDraft((currentDraft) => ({ ...currentDraft, clientPassword: value }))
                 }
                 onIconPress={() => setShowPassword((currentValue) => !currentValue)}
-                placeholder="Ingrese su contrasena"
+                placeholder="Ingrese su contraseña"
                 secureTextEntry={!showPassword}
                 value={clientPassword}
               />
@@ -267,7 +288,7 @@ export function ClientPersonalInformationScreen({
               </Text>
               <PersonalField
                 icon={showPasswordConfirmation ? "eye-off-outline" : "eye-outline"}
-                label="Repetir contrasena"
+                label="Repetir contraseña"
                 onChangeText={(value) =>
                   setRegistrationDraft((currentDraft) => ({
                     ...currentDraft,
@@ -275,12 +296,12 @@ export function ClientPersonalInformationScreen({
                   }))
                 }
                 onIconPress={() => setShowPasswordConfirmation((currentValue) => !currentValue)}
-                placeholder="Repita su contrasena"
+                placeholder="Repita su contraseña"
                 secureTextEntry={!showPasswordConfirmation}
                 value={clientPasswordConfirmation}
               />
               {clientPasswordConfirmation.length > 0 && !doPasswordsMatch ? (
-                <Text style={local.clientValidationText}>Las contrasenas deben coincidir.</Text>
+                <Text style={local.clientValidationText}>Las contraseñas deben coincidir.</Text>
               ) : null}
             </View>
           </View>
@@ -364,8 +385,21 @@ export function ClientLocationScreen({
         accuracy: Location.Accuracy.Balanced
       });
       const { latitude, longitude } = position.coords;
-      updateResolvedAddress(`Lat ${latitude.toFixed(5)}, Lng ${longitude.toFixed(5)}`, latitude, longitude);
-      setLocationMessage("Ubicacion real detectada. Puedes escribir una referencia si lo necesitas.");
+      const coordinateFallback = `Lat ${latitude.toFixed(5)}, Lng ${longitude.toFixed(5)}`;
+      let resolvedAddress = coordinateFallback;
+
+      try {
+        const [geocodedAddress] = await Location.reverseGeocodeAsync({ latitude, longitude });
+
+        if (geocodedAddress) {
+          resolvedAddress = formatReverseGeocodedAddress(geocodedAddress) || coordinateFallback;
+        }
+      } catch {
+        resolvedAddress = coordinateFallback;
+      }
+
+      updateResolvedAddress(resolvedAddress, latitude, longitude);
+      setLocationMessage("Ubicacion detectada y asociada a tu perfil.");
     } catch {
       setLocationMessage("No se pudo obtener tu ubicacion. Intenta nuevamente.");
     } finally {
@@ -403,7 +437,7 @@ export function ClientLocationScreen({
           <View style={local.clientLocationScreen}>
             <View style={local.personalHeader}>
               <View style={local.personalTitleBlock}>
-                <Text style={local.personalTitle}>Ubicacion</Text>
+                <Text style={local.personalTitle}>Ubicación</Text>
                 <View style={local.personalTitleUnderline} />
               </View>
               <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
@@ -411,12 +445,12 @@ export function ClientLocationScreen({
               </Pressable>
             </View>
 
-            <Text style={local.locationIntro}>Ingresa tu ubicacion exacta donde se dara el servicio</Text>
+            <Text style={local.locationIntro}>Ingresa tu ubicación exacta donde se dará el servicio</Text>
 
             <View style={local.locationForm}>
               <View>
                 <PersonalField
-                  label="Ubicacion exacta"
+                  label="Ubicación exacta"
                   onChangeText={updateAddress}
                   placeholder="Referencia o direccion manual"
                   value={clientAddress}
@@ -478,17 +512,203 @@ export function ClientLocationScreen({
             <View style={local.personalStepBar} />
           </View>
         </View>
-        <View style={local.identityFooterActions}>
-          <Pressable onPress={() => setExitIntent({ action: "back", target: "clientPersonalInformation" })} style={local.backButton}>
+        <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
+          <Pressable onPress={() => navigate("clientPersonalInformation")} style={local.backButton}>
             <Ionicons name="play-back" size={14} color="#FFFFFF" />
             <Text style={local.nextButtonText}>Regresar</Text>
           </Pressable>
-          <Pressable disabled={!canContinue} onPress={() => undefined} style={[local.identityNextButton, !canContinue && local.nextButtonDisabled]}>
+          <Pressable
+            disabled={!canContinue}
+            onPress={() => navigate("clientPropertyType")}
+            style={[local.identityNextButton, !canContinue && local.nextButtonDisabled]}
+          >
             <Text style={[local.nextButtonText, !canContinue && local.nextButtonTextDisabled]}>Siguiente</Text>
             <Ionicons name="play-forward" size={14} color={canContinue ? "#FFFFFF" : "#6D7B88"} />
           </Pressable>
         </View>
       </View>
+      <RegistrationExitConfirmation
+        intent={exitIntent}
+        onCancel={() => setExitIntent(null)}
+        onConfirm={handleConfirmExit}
+      />
+    </View>
+  );
+}
+
+export function ClientPropertyTypeScreen({
+  navigate,
+  registerClient,
+  registrationDraft,
+  resetRegistrationDraft,
+  setRegistrationDraft
+}: ScreenRenderProps) {
+  const [exitIntent, setExitIntent] = useState<ExitIntent>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
+  const { clientPropertyType, clientReferenceDetails } = registrationDraft;
+
+  const handleConfirmExit = () => {
+    setExitIntent(null);
+    resetRegistrationDraft();
+    navigate("login");
+  };
+
+  const finishRegistration = async () => {
+    if (!clientPropertyType || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setRegistrationError("");
+
+    try {
+      await registerClient();
+      resetRegistrationDraft();
+      navigate("login");
+    } catch (error) {
+      setRegistrationError(
+        error instanceof Error ? error.message : "No se pudo completar el registro. Intenta nuevamente."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <View style={styles.screen}>
+      <View style={local.personalTopBand} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={local.clientKeyboardArea}
+      >
+        <ScrollView
+          contentContainerStyle={local.clientPropertyBodyScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={local.clientPropertyScreen}>
+            <View style={local.personalHeader}>
+              <View style={local.personalTitleBlock}>
+                <Text style={local.personalTitle}>Tipo de inmueble</Text>
+                <View style={local.personalTitleUnderline} />
+              </View>
+              <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
+                <Ionicons name="close-circle" size={24} color="#111111" />
+              </Pressable>
+            </View>
+
+            <Text style={local.clientPropertyIntro}>
+              Señala el tipo de lugar donde se realizará el servicio.
+            </Text>
+
+            <View style={local.clientPropertyPanel}>
+              {clientPropertyOptions.map((option) => {
+                const isSelected = clientPropertyType === option.label;
+
+                return (
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isSelected }}
+                    key={option.label}
+                    onPress={() =>
+                      setRegistrationDraft((currentDraft) => ({
+                        ...currentDraft,
+                        clientPropertyType: option.label
+                      }))
+                    }
+                    style={({ pressed }) => [
+                      local.clientPropertyCard,
+                      isSelected && local.clientPropertyCardSelected,
+                      pressed && local.clientPropertyCardPressed
+                    ]}
+                  >
+                    <View style={[local.clientPropertyIcon, isSelected && local.clientPropertyIconSelected]}>
+                      <Ionicons name={option.icon} size={25} color={isSelected ? "#FFFFFF" : "#25364A"} />
+                    </View>
+                    <Text style={[local.clientPropertyLabel, isSelected && local.clientPropertyLabelSelected]}>
+                      {option.label}
+                    </Text>
+                    {isSelected ? (
+                      <View style={local.clientPropertyCheck}>
+                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={local.clientReferenceBlock}>
+              <Text style={local.personalFieldLabel}>Detalles de referencia</Text>
+              <View style={local.clientReferenceShell}>
+                <TextInput
+                  maxLength={180}
+                  multiline
+                  numberOfLines={3}
+                  onChangeText={(value) =>
+                    setRegistrationDraft((currentDraft) => ({
+                      ...currentDraft,
+                      clientReferenceDetails: value
+                    }))
+                  }
+                  placeholder="Ej: puerta azul, segundo piso (opcional)"
+                  placeholderTextColor="#A5AFBA"
+                  style={local.clientReferenceInput}
+                  textAlignVertical="top"
+                  value={clientReferenceDetails}
+                />
+              </View>
+              <Text style={local.clientReferenceCount}>{clientReferenceDetails.length}/180</Text>
+            </View>
+
+            {registrationError ? (
+              <View style={local.clientRegistrationError}>
+                <Ionicons name="alert-circle-outline" size={18} color="#C92A2A" />
+                <Text style={local.clientRegistrationErrorText}>{registrationError}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              disabled={!clientPropertyType || isSubmitting}
+              onPress={finishRegistration}
+              style={({ pressed }) => [
+                local.clientFinishButton,
+                (!clientPropertyType || isSubmitting) && local.clientFinishButtonDisabled,
+                pressed && clientPropertyType && !isSubmitting && local.clientFinishButtonPressed
+              ]}
+            >
+              {isSubmitting ? <Ionicons name="hourglass-outline" size={18} color="#FFFFFF" /> : null}
+              <Text
+                style={[
+                  local.clientFinishButtonText,
+                  (!clientPropertyType || isSubmitting) && local.nextButtonTextDisabled
+                ]}
+              >
+                {isSubmitting ? "Registrando..." : "Finalizar registro"}
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <View style={local.identityFooter}>
+        <View style={local.dualActionStepBlock}>
+          <Text style={local.stepText}>Paso 3 de 3</Text>
+          <View style={local.personalStepRow}>
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+            <View style={[local.personalStepBar, local.personalStepBarActive]} />
+          </View>
+        </View>
+        <View style={[local.identityFooterActions, local.clientWizardFooterActions]}>
+          <Pressable onPress={() => navigate("clientLocation")} style={local.backButton}>
+            <Ionicons name="play-back" size={14} color="#FFFFFF" />
+            <Text style={local.nextButtonText}>Regresar</Text>
+          </Pressable>
+        </View>
+      </View>
+
       <RegistrationExitConfirmation
         intent={exitIntent}
         onCancel={() => setExitIntent(null)}
@@ -735,6 +955,7 @@ function RegistrationExitConfirmation({
 
 function PersonalField({
   icon,
+  inputMode,
   keyboardType,
   label,
   maxLength,
@@ -748,7 +969,8 @@ function PersonalField({
 }: {
   editable?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
-  keyboardType?: "default" | "number-pad";
+  inputMode?: TextInputProps["inputMode"];
+  keyboardType?: TextInputProps["keyboardType"];
   label: string;
   maxLength?: number;
   onChangeText: (value: string) => void;
@@ -764,6 +986,7 @@ function PersonalField({
       <View style={[local.personalInputShell, !editable && local.personalInputShellDisabled]}>
         <TextInput
           editable={editable}
+          inputMode={inputMode}
           keyboardType={keyboardType}
           maxLength={maxLength}
           onChangeText={onChangeText}
@@ -907,6 +1130,11 @@ export function IdentityScreen({
   const documentNumber = registrationDraft.documentNumber;
   const expectedLength = documentType === "Carnet de extranjeria" ? 9 : 8;
   const documentLabel = documentType ?? "Seleccionar documento";
+  const documentKeyboardType = Platform.select<TextInputProps["keyboardType"]>({
+    ios: "number-pad",
+    android: "numeric",
+    default: "number-pad"
+  });
   const documentNumberError =
     documentTouched && documentType && documentNumber.length !== expectedLength
       ? `${documentType} debe tener ${expectedLength} numeros`
@@ -949,61 +1177,72 @@ export function IdentityScreen({
   return (
     <ScreenFrame noPadding scrollable={false}>
       <View style={local.personalTopBand} />
-      <View style={local.identityScreen}>
-        <View style={local.personalHeader}>
-          <View style={local.personalTitleBlock}>
-            <Text style={local.personalTitle}>Cedula de identidad</Text>
-            <View style={local.personalTitleUnderline} />
-          </View>
-          <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
-            <Ionicons name="close-circle" size={24} color="#111111" />
-          </Pressable>
-        </View>
-
-        <View style={local.identityDocumentPhotoRow}>
-          <IdentityPhotoUpload label="Anverso" onPress={() => navigate("frontDniInstructions")} photoUri={frontDniPhotoUri} />
-          <IdentityPhotoUpload label="Reverso" onPress={() => navigate("backDniInstructions")} photoUri={backDniPhotoUri} />
-        </View>
-
-        <View style={local.identityForm}>
-          <View style={local.personalFieldBlock}>
-            <Text style={local.personalFieldLabel}>Tipo de documento</Text>
-            <Pressable onPress={() => setIsDocumentMenuOpen(true)} style={local.identitySelectShell}>
-              <Text style={[local.identitySelectText, !documentType && local.identitySelectPlaceholder]}>
-                {documentLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={22} color="#B6BEC9" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+        style={local.identityKeyboardArea}
+      >
+        <ScrollView
+          contentContainerStyle={local.identityScreen}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={local.personalHeader}>
+            <View style={local.personalTitleBlock}>
+              <Text style={local.personalTitle}>Cedula de identidad</Text>
+              <View style={local.personalTitleUnderline} />
+            </View>
+            <Pressable onPress={() => setExitIntent({ action: "cancel", target: "login" })} hitSlop={10}>
+              <Ionicons name="close-circle" size={24} color="#111111" />
             </Pressable>
           </View>
 
-          <PersonalField
-            editable={Boolean(documentType)}
-            keyboardType="number-pad"
-            label="Numero de documento"
-            maxLength={expectedLength}
-            onChangeText={handleDocumentNumberChange}
-            placeholder={
-              documentType
-                ? documentType === "Carnet de extranjeria"
-                  ? "Ej: 123456789"
-                  : "Ej: 12345678"
-                : "Selecciona primero el tipo"
-            }
-            value={documentNumber}
-          />
-          {documentNumberError ? <Text style={local.validationText}>{documentNumberError}</Text> : null}
-        </View>
-
-        <View style={local.identityInfoPill}>
-          <Ionicons name="information-circle-outline" size={20} color="#00A6FF" />
-          <View style={local.identityInfoCopy}>
-            <Text style={local.identityInfoTitle}>Al momento de tomar la foto:</Text>
-            <Text style={local.identityInfoText}>
-              Asegurate de que sea clara y que todos los datos sean legibles para evitar retrasos en tu verificacion.
-            </Text>
+          <View style={local.identityDocumentPhotoRow}>
+            <IdentityPhotoUpload label="Anverso" onPress={() => navigate("frontDniInstructions")} photoUri={frontDniPhotoUri} />
+            <IdentityPhotoUpload label="Reverso" onPress={() => navigate("backDniInstructions")} photoUri={backDniPhotoUri} />
           </View>
-        </View>
-      </View>
+
+          <View style={local.identityForm}>
+            <View style={local.personalFieldBlock}>
+              <Text style={local.personalFieldLabel}>Tipo de documento</Text>
+              <Pressable onPress={() => setIsDocumentMenuOpen(true)} style={local.identitySelectShell}>
+                <Text style={[local.identitySelectText, !documentType && local.identitySelectPlaceholder]}>
+                  {documentLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={22} color="#B6BEC9" />
+              </Pressable>
+            </View>
+
+            <PersonalField
+              editable={Boolean(documentType)}
+              inputMode="numeric"
+              keyboardType={documentKeyboardType}
+              label="Numero de documento"
+              maxLength={expectedLength}
+              onChangeText={handleDocumentNumberChange}
+              placeholder={
+                documentType
+                  ? documentType === "Carnet de extranjeria"
+                    ? "Ej: 123456789"
+                    : "Ej: 12345678"
+                  : "Selecciona primero el tipo"
+              }
+              value={documentNumber}
+            />
+            {documentNumberError ? <Text style={local.validationText}>{documentNumberError}</Text> : null}
+          </View>
+
+          <View style={local.identityInfoPill}>
+            <Ionicons name="information-circle-outline" size={20} color="#00A6FF" />
+            <View style={local.identityInfoCopy}>
+              <Text style={local.identityInfoTitle}>Al momento de tomar la foto:</Text>
+              <Text style={local.identityInfoText}>
+                Asegurate de que sea clara y que todos los datos sean legibles para evitar retrasos en tu verificacion.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={[local.identityFooter, local.workerIdentityFooter]}>
         <View style={local.dualActionStepBlock}>
@@ -1999,6 +2238,16 @@ const local = {
     paddingTop: 16,
     minHeight: 564
   },
+  clientPropertyBodyScroll: {
+    flexGrow: 1,
+    paddingBottom: 18
+  },
+  clientPropertyScreen: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    minHeight: 564
+  },
   clientIntro: {
     color: "#596472",
     fontSize: 12,
@@ -2037,6 +2286,150 @@ const local = {
     marginTop: 18,
     marginBottom: 28,
     maxWidth: 290
+  },
+  clientPropertyIntro: {
+    color: "#596472",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600" as const,
+    marginTop: 2,
+    marginBottom: 22,
+    maxWidth: 300
+  },
+  clientPropertyPanel: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#D5DCE5",
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 10,
+    shadowColor: "#09243A",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2
+  },
+  clientPropertyCard: {
+    width: "48%" as const,
+    minHeight: 92,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D2D8E0",
+    backgroundColor: "#FBFCFE",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 7,
+    position: "relative" as const
+  },
+  clientPropertyCardSelected: {
+    borderColor: "#1976D2",
+    borderWidth: 2,
+    backgroundColor: "#EAF4FF"
+  },
+  clientPropertyCardPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }]
+  },
+  clientPropertyIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: "#EEF2F6",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  clientPropertyIconSelected: {
+    backgroundColor: "#1976D2"
+  },
+  clientPropertyLabel: {
+    color: "#25364A",
+    fontSize: 12,
+    fontWeight: "800" as const,
+    textAlign: "center" as const
+  },
+  clientPropertyLabelSelected: {
+    color: "#0A5CAF"
+  },
+  clientPropertyCheck: {
+    position: "absolute" as const,
+    right: 8,
+    top: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#1976D2",
+    alignItems: "center" as const,
+    justifyContent: "center" as const
+  },
+  clientReferenceBlock: {
+    marginTop: 20,
+    gap: 6
+  },
+  clientReferenceShell: {
+    minHeight: 78,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "#1677F2",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 13,
+    paddingVertical: 10
+  },
+  clientReferenceInput: {
+    minHeight: 54,
+    color: "#09243A",
+    fontSize: 14,
+    lineHeight: 19,
+    padding: 0
+  },
+  clientReferenceCount: {
+    color: "#7B8794",
+    fontSize: 10,
+    fontWeight: "700" as const,
+    textAlign: "right" as const
+  },
+  clientRegistrationError: {
+    marginTop: 12,
+    borderRadius: 13,
+    backgroundColor: "#FFF0F0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8
+  },
+  clientRegistrationErrorText: {
+    flex: 1,
+    color: "#A61E1E",
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "700" as const
+  },
+  clientFinishButton: {
+    minHeight: 48,
+    marginTop: 18,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#00A6FF",
+    backgroundColor: "#021B30",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8
+  },
+  clientFinishButtonDisabled: {
+    borderColor: "#CBD5E1",
+    backgroundColor: "#D6DEE8"
+  },
+  clientFinishButtonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }]
+  },
+  clientFinishButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800" as const
   },
   locationForm: {
     gap: 22
@@ -2387,6 +2780,9 @@ const local = {
     paddingTop: 14,
     minHeight: 564
   },
+  identityKeyboardArea: {
+    flex: 1
+  },
   identityDocumentPhotoRow: {
     flexDirection: "row" as const,
     justifyContent: "space-around" as const,
@@ -2496,6 +2892,9 @@ const local = {
       alignItems: "center" as const,
       justifyContent: "space-between" as const
     },
+  clientWizardFooterActions: {
+    bottom: 14
+  },
     backButton: {
       minHeight: 34,
       minWidth: 92,

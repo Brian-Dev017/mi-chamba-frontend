@@ -7,6 +7,7 @@ import {
 import {
   ClientLocationScreen,
   ClientPersonalInformationScreen,
+  ClientPropertyTypeScreen,
   DocumentCameraScreen,
   DocumentConfirmation,
   DocumentInstruction,
@@ -46,6 +47,12 @@ export const screenRegistry: ScreenDefinition[] = [
     title: "CLIENTE UBICACION",
     group: "Registro",
     render: ClientLocationScreen
+  },
+  {
+    key: "clientPropertyType",
+    title: "CLIENTE TIPO DE INMUEBLE",
+    group: "Registro",
+    render: ClientPropertyTypeScreen
   },
   {
     key: "personalInformation",

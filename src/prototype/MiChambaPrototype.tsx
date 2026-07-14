@@ -5,7 +5,8 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
 import { workerRequests as initialWorkerRequests } from "../data/mockData";
-import type { RegisteredWorker, RegistrationDraft, ScreenKey } from "../types/domain";
+import { registerClientInMemory } from "../services/api/clientRegistration";
+import type { RegisteredClient, RegisteredWorker, RegistrationDraft, ScreenKey } from "../types/domain";
 
 const initialRegistrationDraft: RegistrationDraft = {
   firstName: "",
@@ -21,6 +22,8 @@ const initialRegistrationDraft: RegistrationDraft = {
   clientAddress: "",
   clientLatitude: null,
   clientLongitude: null,
+  clientPropertyType: null,
+  clientReferenceDetails: "",
   workerPassword: "",
   workerPasswordConfirmation: ""
 };
@@ -34,6 +37,7 @@ export default function MiChambaPrototype() {
   const [backDniPhotoUri, setBackDniPhotoUri] = useState<string | null>(null);
   const [pendingDniPhotoUri, setPendingDniPhotoUri] = useState<string | null>(null);
   const [registeredWorkers, setRegisteredWorkers] = useState<RegisteredWorker[]>([]);
+  const [registeredClients, setRegisteredClients] = useState<RegisteredClient[]>([]);
   const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
   const [workerRequests, setWorkerRequests] = useState(initialWorkerRequests);
   const screens = useMemo(() => screenRegistry, []);
@@ -84,6 +88,15 @@ export default function MiChambaPrototype() {
     ]);
   }, [profilePhotoUri, registrationDraft]);
 
+  const registerClient = useCallback(async () => {
+    const client = await registerClientInMemory(registrationDraft);
+
+    setRegisteredClients((currentClients) => [
+      ...currentClients.filter((currentClient) => currentClient.phone !== client.phone),
+      client
+    ]);
+  }, [registrationDraft]);
+
   const screenProps = {
     navigate: setActiveKey,
     registrationDraft,
@@ -101,6 +114,8 @@ export default function MiChambaPrototype() {
     setPendingDniPhotoUri,
     registeredWorkers,
     registerWorker,
+    registeredClients,
+    registerClient,
     authenticatedWorker,
     setAuthenticatedWorker,
     workerRequests,

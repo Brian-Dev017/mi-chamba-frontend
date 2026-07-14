@@ -230,7 +230,7 @@ export function ProfileSelectionScreen({ navigate, resetRegistrationDraft }: Scr
       <View style={local.profileTopBand} />
       <View style={local.profileContent}>
         <Text style={local.profileIntro}>Encuentra el servicio que{"\n"}necesitas cuando lo necesitas</Text>
-        <Text style={local.profileQuestion}>Cual es tu perfil?</Text>
+        <Text style={local.profileQuestion}>¿Cuál es tu perfil?</Text>
 
         <View style={local.profileRoleGrid}>
           <RoleCard

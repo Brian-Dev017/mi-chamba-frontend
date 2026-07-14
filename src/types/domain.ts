@@ -10,6 +10,7 @@ export type ScreenKey =
   | "profileSelection"
   | "clientPersonalInformation"
   | "clientLocation"
+  | "clientPropertyType"
   | "personalInformation"
   | "identity"
   | "professionalInformation"
@@ -50,8 +51,25 @@ export type RegistrationDraft = {
   clientAddress: string;
   clientLatitude: number | null;
   clientLongitude: number | null;
+  clientPropertyType: ClientPropertyType | null;
+  clientReferenceDetails: string;
   workerPassword: string;
   workerPasswordConfirmation: string;
+};
+
+export type ClientPropertyType = "Casa" | "Departamento" | "Oficina" | "Local Comercial" | "Otros";
+
+export type RegisteredClient = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  password: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  propertyType: ClientPropertyType;
+  referenceDetails: string;
 };
 
 export type RegisteredWorker = {
@@ -84,6 +102,8 @@ export type ScreenRenderProps = {
   setPendingDniPhotoUri: (uri: string | null) => void;
   registeredWorkers: RegisteredWorker[];
   registerWorker: () => void;
+  registeredClients: RegisteredClient[];
+  registerClient: () => Promise<void>;
   authenticatedWorker: RegisteredWorker | null;
   setAuthenticatedWorker: (worker: RegisteredWorker | null) => void;
   workerRequests: WorkerJob[];
