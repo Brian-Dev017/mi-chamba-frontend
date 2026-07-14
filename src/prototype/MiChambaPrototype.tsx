@@ -1,4 +1,5 @@
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { useCallback, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -36,6 +37,11 @@ const initialRegistrationDraft: RegistrationDraft = {
 };
 
 export default function MiChambaPrototype() {
+  useFonts({
+    OpenDyslexic: require("../../assets/fonts/OpenDyslexic-Regular.otf"),
+    "OpenDyslexic-Bold": require("../../assets/fonts/OpenDyslexic-Bold.otf")
+  });
+
   return (
     <AccessibilityProvider>
       <MiChambaPrototypeContent />

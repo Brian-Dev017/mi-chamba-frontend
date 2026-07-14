@@ -476,6 +476,7 @@ export function WorkerProfileScreen({
               accessibilityHint="Configura el tamaño del texto, el contraste y la lectura"
               accessibilityLabel="Accesibilidad"
               accessibilityRole="button"
+              hitSlop={5}
               onPress={() => setShowAccessibilitySettings(true)}
               style={[local.accessibilityButton, highContrast && local.highContrastAccessibilityButton]}
             >
@@ -997,9 +998,9 @@ const local = {
   },
   profileAvailabilityText: { color: "#102538", fontSize: 12, fontWeight: "800" as const },
   accessibilityButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     backgroundColor: "#EAF2F8",

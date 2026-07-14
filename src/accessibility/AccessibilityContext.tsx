@@ -70,6 +70,7 @@ export function useAccessibleInputStyle(baseFontSize = 16): TextStyle {
 
   return {
     color: highContrast ? "#000000" : undefined,
+    fontFamily: dyslexiaFriendly ? "OpenDyslexic" : undefined,
     fontSize,
     lineHeight: dyslexiaFriendly ? Math.round(fontSize * 1.45 * 10) / 10 : undefined,
     letterSpacing: dyslexiaFriendly ? 0.35 : undefined

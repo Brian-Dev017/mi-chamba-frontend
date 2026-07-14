@@ -14,6 +14,7 @@
 
 - Create `src/accessibility/AccessibilityContext.tsx`: preference types, defaults, provider, hook, text-scale and contrast helpers.
 - Create `src/accessibility/AccessibilitySettingsModal.tsx`: reusable accessible settings panel and reset confirmation.
+- Create `assets/fonts/OpenDyslexic-Regular.otf`, `assets/fonts/OpenDyslexic-Bold.otf`, and `assets/fonts/OFL.txt`: bundled dyslexia-friendly typeface and license.
 - Modify `src/components/ResponsiveText.tsx`: combine responsive sizing with accessibility sizing and dyslexia typography.
 - Modify `src/components/ui.tsx`: make shared screen surfaces and shell controls respond to contrast mode.
 - Modify `src/prototype/MiChambaPrototype.tsx`: mount the provider around the app.
@@ -64,7 +65,7 @@ Read `textSizeScale` from `useAccessibility()` and calculate the rendered size a
 
 - [ ] **Step 2: Apply dyslexia-friendly typography**
 
-When enabled, add a moderate `letterSpacing`, increase explicit line height, synthesize a readable line height when only `fontSize` exists, and use the platform sans-serif family. Do not change content or force uppercase.
+When enabled, load the bundled OpenDyslexic Regular/Bold assets, add moderate `letterSpacing`, increase explicit line height, and synthesize a readable line height when only `fontSize` exists. Do not change content or force uppercase.
 
 - [ ] **Step 3: Reinforce text contrast**
 
@@ -204,4 +205,3 @@ Check on a narrow phone viewport and a larger viewport:
 git add src/components/ui.tsx src/screens/client/ClientScreens.tsx src/screens/worker/WorkerScreens.tsx src/screens/auth/AuthScreens.tsx src/screens/onboarding/OnboardingScreens.tsx
 git commit -m "feat: complete global accessibility experience"
 ```
-

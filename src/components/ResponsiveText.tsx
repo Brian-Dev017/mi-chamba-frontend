@@ -1,6 +1,5 @@
 import type { ComponentProps } from "react";
 import {
-  Platform,
   StyleSheet,
   Text as NativeText,
   useWindowDimensions
@@ -62,7 +61,12 @@ export function ResponsiveText({ style, ...props }: ResponsiveTextProps) {
 
   const accessibilityTypography = dyslexiaFriendly
     ? {
-        fontFamily: Platform.select({ android: "sans-serif", ios: "Arial", default: "Arial" }),
+        fontFamily:
+          flattenedStyle?.fontWeight === "bold" ||
+          (typeof flattenedStyle?.fontWeight === "string" && Number(flattenedStyle.fontWeight) >= 600)
+            ? "OpenDyslexic-Bold"
+            : "OpenDyslexic",
+        fontWeight: "normal" as const,
         letterSpacing: (typeof flattenedStyle?.letterSpacing === "number" ? flattenedStyle.letterSpacing : 0) + 0.35
       }
     : undefined;

@@ -140,7 +140,7 @@ export function AccessibilitySettingsModal({
               <View style={[local.preferenceCard, contrastStyles?.option]}>
                 <View style={local.preferenceCopy}>
                   <Text style={local.preferenceTitle}>Dislexia amigable</Text>
-                  <Text style={local.preferenceDescription}>Amplía el espaciado y la altura de las líneas.</Text>
+                  <Text style={local.preferenceDescription}>Usa OpenDyslexic y amplía el espaciado entre líneas.</Text>
                 </View>
                 <Switch
                   accessibilityLabel="Activar modo dislexia amigable"
@@ -278,4 +278,3 @@ const local = StyleSheet.create({
   doneButton: { minHeight: 52, borderRadius: 12, backgroundColor: palette.ink, alignItems: "center", justifyContent: "center" },
   doneButtonText: { color: palette.white, fontSize: 14, fontWeight: "900" }
 });
-

@@ -55,7 +55,7 @@ El modo de contraste alto usará una paleta reforzada para superficies, textos, 
 
 ### Dislexia amigable
 
-El modo amigable para dislexia priorizará legibilidad mediante tipografía sans serif del sistema, mayor altura de línea, espaciado moderado entre caracteres y menor densidad visual. No se incorporará almacenamiento ni una fuente externa en esta etapa.
+El modo amigable para dislexia priorizará legibilidad mediante la tipografía OpenDyslexic incluida en la aplicación, mayor altura de línea, espaciado moderado entre caracteres y menor densidad visual. Los archivos Regular y Bold se distribuirán con su licencia SIL Open Font License 1.1. No se incorporará almacenamiento en esta etapa.
 
 ## Estado y duración
 
@@ -93,4 +93,3 @@ No se guardarán en el dispositivo. Por tanto:
 - Cerrar sesión restablece las preferencias.
 - Reiniciar la app no conserva preferencias anteriores.
 - El proyecto supera la comprobación de TypeScript.
-
