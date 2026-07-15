@@ -64,10 +64,24 @@ export function WorkerHomeScreen({
     ? `${authenticatedWorker.lastName}, ${authenticatedWorker.firstName}`
     : "Perez Perez, Juan";
   const newJobs = workerRequests.filter((job) => job.status === "NUEVO");
-  const visibleJobs =
-    activeFilter === "Todos"
-      ? newJobs
-      : newJobs.filter((job) => (activeFilter === "Electricidad" ? job.category === "Electricidad" : true));
+  const visibleJobs = (() => {
+    if (activeFilter === "Cerca") {
+      return newJobs.filter((job) => Number.parseFloat(job.detail.distance) <= 4);
+    }
+
+    if (activeFilter === "Mejor Precio") {
+      return [...newJobs].sort(
+        (firstJob, secondJob) =>
+          Number(secondJob.price.replace(/[^0-9.]/g, "")) - Number(firstJob.price.replace(/[^0-9.]/g, ""))
+      );
+    }
+
+    if (activeFilter === "Electricidad") {
+      return newJobs.filter((job) => job.category === "Electricidad");
+    }
+
+    return newJobs;
+  })();
 
   const handleConfirmModal = () => {
     if (!modalState) {
@@ -368,7 +382,11 @@ export function RequestDetailScreen({
           <View style={[local.messageSheet, highContrast && local.highContrastCard]}>
             <View style={local.messageSheetHandle} />
             <Text style={local.messageSheetTitle}>Mensaje al cliente</Text>
-            <Text style={local.messageSheetSubtitle}>Coordina detalles antes de aceptar el trabajo.</Text>
+            <Text style={local.messageSheetSubtitle}>
+              {selectedJob.status === "NUEVO"
+                ? "Coordina detalles antes de aceptar el trabajo."
+                : "Consulta y coordina los detalles de este trabajo."}
+            </Text>
             <View style={local.messageClientRow}>
               <View style={local.avatarMini} />
               <View>

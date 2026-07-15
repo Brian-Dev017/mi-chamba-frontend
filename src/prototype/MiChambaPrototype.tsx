@@ -7,6 +7,7 @@ import { screenRegistry } from "./screenRegistry";
 import { palette } from "../theme/palette";
 import { workerRequests as initialWorkerRequests } from "../data/mockData";
 import { registerClientInMemory } from "../services/api/clientRegistration";
+import { isValidDocumentNumber } from "../services/validation/identityDocument";
 import { AccessibilityProvider } from "../accessibility/AccessibilityContext";
 import type {
   RegisteredClient,
@@ -90,8 +91,12 @@ function MiChambaPrototypeContent() {
       workerPassword
     } = registrationDraft;
 
-    if (!documentType || !professionalTrade || !documentNumber || !workerPassword) {
+    if (!documentType || !professionalTrade || !workerPassword) {
       throw new Error("Completa todos los datos obligatorios del trabajador.");
+    }
+
+    if (!isValidDocumentNumber(documentType, documentNumber)) {
+      throw new Error("Ingresa un documento de identidad valido.");
     }
 
     if (!frontDniPhotoUri || !backDniPhotoUri) {
