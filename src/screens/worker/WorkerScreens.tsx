@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
 import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
-import { requestDetail, workerReviews } from "../../data/mockData";
+import { workerReviews } from "../../data/mockData";
 import type { ScreenRenderProps, WorkerJob } from "../../types/domain";
 import {
   ConfirmationDialog,
@@ -23,15 +23,15 @@ type WorkerModalState =
   | null;
 
 const homeFilters = ["Todos", "Cerca", "Mejor Precio", "Electricidad"] as const;
-const requestReferencePhotos = [
-  "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80"
-] as const;
 const workerPaymentHistory = [
   { id: "payment-001", date: "12/06/2026", service: "Instalacion de tomacorrientes", amount: "S/ 85.00" },
   { id: "payment-002", date: "06/06/2026", service: "Mantenimiento preventivo", amount: "S/ 120.00" },
   { id: "payment-003", date: "28/05/2026", service: "Revision de tablero electrico", amount: "S/ 65.00" }
 ] as const;
+const workerPaymentTotal = workerPaymentHistory.reduce(
+  (total, payment) => total + Number(payment.amount.replace(/[^0-9.]/g, "")),
+  0
+);
 
 function mapWorkerSectionToScreen(section: WorkerSection) {
   switch (section) {
@@ -54,7 +54,8 @@ export function WorkerHomeScreen({
   setAuthenticatedRole,
   setAuthenticatedWorker,
   workerRequests,
-  setWorkerRequests
+  setWorkerRequests,
+  setSelectedWorkerJobId
 }: ScreenRenderProps) {
   const { resetAccessibility } = useAccessibility();
   const [activeFilter, setActiveFilter] = useState<(typeof homeFilters)[number]>("Todos");
@@ -62,10 +63,11 @@ export function WorkerHomeScreen({
   const workerName = authenticatedWorker
     ? `${authenticatedWorker.lastName}, ${authenticatedWorker.firstName}`
     : "Perez Perez, Juan";
+  const newJobs = workerRequests.filter((job) => job.status === "NUEVO");
   const visibleJobs =
     activeFilter === "Todos"
-      ? workerRequests
-      : workerRequests.filter((job) => (activeFilter === "Electricidad" ? job.category === "Electricidad" : true));
+      ? newJobs
+      : newJobs.filter((job) => (activeFilter === "Electricidad" ? job.category === "Electricidad" : true));
 
   const handleConfirmModal = () => {
     if (!modalState) {
@@ -119,10 +121,20 @@ export function WorkerHomeScreen({
         <JobRequestCard
           key={job.id}
           job={job}
-          onOpenDetail={() => navigate("requestDetail")}
+          onOpenDetail={() => {
+            setSelectedWorkerJobId(job.id);
+            navigate("requestDetail");
+          }}
           onReject={() => setModalState({ type: "reject", job })}
         />
       ))}
+      {visibleJobs.length === 0 ? (
+        <View style={local.emptyStateCard}>
+          <Ionicons name="briefcase-outline" size={26} color="#6D7B88" />
+          <Text style={local.emptyStateTitle}>No hay solicitudes disponibles</Text>
+          <Text style={local.emptyStateText}>Prueba otro filtro o vuelve a revisar más tarde.</Text>
+        </View>
+      ) : null}
       <ConfirmationDialog
         visible={modalState !== null}
         title={modalState?.type === "logout" ? "Cerrar sesion" : "Rechazar solicitud"}
@@ -140,12 +152,90 @@ export function WorkerHomeScreen({
   );
 }
 
-export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRenderProps) {
+export function RequestDetailScreen({
+  isWorkerAvailable,
+  navigate,
+  selectedWorkerJobId,
+  setSelectedWorkerJobId,
+  setWorkerRequests,
+  workerRequests
+}: ScreenRenderProps) {
   const { highContrast } = useAccessibility();
   const accessibleInputStyle = useAccessibleInputStyle(14);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
+  const selectedJob = workerRequests.find((job) => job.id === selectedWorkerJobId);
+  const detail = selectedJob?.detail;
+  const backTarget = selectedJob?.status === "NUEVO" ? "workerHome" : "myJobs";
+
+  const sendMessage = () => {
+    const body = messageDraft.trim();
+
+    if (!body || !selectedJob) {
+      return;
+    }
+
+    setWorkerRequests((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === selectedJob.id
+          ? {
+              ...job,
+              messages: [
+                ...job.messages,
+                {
+                  id: `message-${Date.now()}`,
+                  body,
+                  sentAt: new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }),
+                  sender: "worker" as const
+                }
+              ]
+            }
+          : job
+      )
+    );
+    setMessageDraft("");
+  };
+
+  const acceptJob = () => {
+    if (!selectedJob || selectedJob.status !== "NUEVO" || !isWorkerAvailable) {
+      return;
+    }
+
+    setWorkerRequests((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === selectedJob.id ? { ...job, status: "AGENDADO" as const, time: "Agendado recientemente" } : job
+      )
+    );
+    navigate("workConfirmation");
+  };
+
+  const rejectJob = () => {
+    if (!selectedJob) {
+      return;
+    }
+
+    setWorkerRequests((currentJobs) => currentJobs.filter((job) => job.id !== selectedJob.id));
+    setShowRejectConfirmation(false);
+    setSelectedWorkerJobId(null);
+    navigate("workerHome");
+  };
+
+  if (!selectedJob || !detail) {
+    return (
+      <WorkerShell active="Solicitudes" onNavigate={(section) => navigateWorkerSection(navigate, section)} showNavigation={false}>
+        <View style={local.missingJobState}>
+          <Ionicons name="alert-circle-outline" size={38} color="#C92A2A" />
+          <Text style={local.emptyStateTitle}>No encontramos este trabajo</Text>
+          <Text style={local.emptyStateText}>La solicitud pudo haber sido retirada o ya no está disponible.</Text>
+          <Pressable onPress={() => navigate("workerHome")} style={local.missingJobButton}>
+            <Text style={local.missingJobButtonText}>Volver a solicitudes</Text>
+          </Pressable>
+        </View>
+      </WorkerShell>
+    );
+  }
 
   return (
     <WorkerShell active="Solicitudes" onNavigate={(section) => navigateWorkerSection(navigate, section)} showNavigation={false}>
@@ -154,7 +244,7 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
           <View style={local.detailHeaderIdentity}>
             <Text style={local.detailEyebrow}>Detalle de Solicitud</Text>
             <View style={local.detailStatusPill}>
-              <Text style={local.detailStatusText}>NUEVO</Text>
+              <Text style={local.detailStatusText}>{selectedJob.status}</Text>
             </View>
           </View>
           <Pressable onPress={() => setShowExitConfirmation(true)} style={local.detailBackIcon} hitSlop={8}>
@@ -163,9 +253,9 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
         </View>
 
         <View style={local.detailTitleRow}>
-          <Text style={local.detailTitle}>{requestDetail.title}</Text>
+          <Text style={local.detailTitle}>{detail.title}</Text>
           <View style={local.detailCategoryPill}>
-            <Text style={local.detailCategoryText}>{requestDetail.category}</Text>
+            <Text style={local.detailCategoryText}>{detail.category}</Text>
           </View>
         </View>
 
@@ -175,11 +265,11 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
             <View style={local.avatarMini} />
           </View>
           <View style={local.flex}>
-            <Text style={local.clientName}>{requestDetail.clientName}</Text>
+            <Text style={local.clientName}>{detail.clientName}</Text>
             <View style={local.clientRatingRow}>
               <Ionicons name="star" size={14} color="#F59E0B" />
               <Text style={local.clientRatingText}>
-                {requestDetail.rating} ({requestDetail.completedServices} servicios)
+                {detail.rating} ({detail.completedServices} servicios)
               </Text>
             </View>
           </View>
@@ -191,9 +281,9 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
 
         <Text style={local.detailSectionLabel}>QUE NECESITA?</Text>
         <InfoCard>
-          <Text style={local.requestDescription}>{requestDetail.description}</Text>
+          <Text style={local.requestDescription}>{detail.description}</Text>
           <View style={local.referencePhotoRow}>
-            {requestReferencePhotos.map((uri, index) => (
+            {selectedJob.referencePhotos.map((uri, index) => (
               <Image key={`reference-${index}`} source={{ uri }} style={local.referencePhoto} />
             ))}
           </View>
@@ -201,11 +291,11 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
 
         <Text style={local.detailSectionLabel}>DETALLES DEL TRABAJO</Text>
         <View style={local.detailStack}>
-          <DetailRow icon="location-outline" label="Direccion" value={requestDetail.address} />
-          <DetailRow icon="navigate-outline" label="Distancia" value={requestDetail.distance} />
-          <DetailRow icon="calendar-outline" label="Disponibilidad" value={requestDetail.availability} />
-          <DetailRow icon="construct-outline" label="Materiales" value={requestDetail.materials} />
-          <DetailRow icon="time-outline" label="Duracion" value={requestDetail.duration} />
+          <DetailRow icon="location-outline" label="Direccion" value={detail.address} />
+          <DetailRow icon="navigate-outline" label="Distancia" value={detail.distance} />
+          <DetailRow icon="calendar-outline" label="Disponibilidad" value={detail.availability} />
+          <DetailRow icon="construct-outline" label="Materiales" value={detail.materials} />
+          <DetailRow icon="time-outline" label="Duracion" value={detail.duration} />
         </View>
 
         <View style={local.paymentPanel}>
@@ -216,7 +306,7 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
             </View>
           </View>
           <View style={local.paymentRow}>
-            <Text style={local.priceLarge}>{requestDetail.paymentAmount}</Text>
+            <Text style={local.priceLarge}>{detail.paymentAmount}</Text>
             <View style={local.plinBadge}>
               <Text style={local.plinBadgeText}>plin</Text>
             </View>
@@ -230,35 +320,45 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
           <Text style={local.messageButtonText}>Enviar mensaje al cliente</Text>
         </Pressable>
 
-        <View style={local.detailBottomActions}>
-          <Pressable style={local.detailRejectButton}>
-            <Text style={local.detailRejectText}>Rechazar</Text>
-          </Pressable>
-          <Pressable
-            style={local.detailAcceptButton}
-            onPress={() => {
-              setWorkerRequests((currentRequests) =>
-                currentRequests.filter((job) => job.id !== requestDetail.id)
-              );
-              navigate("workConfirmation");
-            }}
-          >
-            <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
-            <Text style={local.detailAcceptText}>Aceptar trabajo</Text>
-          </Pressable>
-        </View>
+        {selectedJob.status === "NUEVO" ? (
+          <>
+            {!isWorkerAvailable ? (
+              <View style={local.unavailableNotice}>
+                <Ionicons name="pause-circle-outline" size={19} color="#A15C00" />
+                <Text style={local.unavailableNoticeText}>Activa tu disponibilidad desde el perfil para aceptar trabajos.</Text>
+              </View>
+            ) : null}
+            <View style={local.detailBottomActions}>
+              <Pressable onPress={() => setShowRejectConfirmation(true)} style={local.detailRejectButton}>
+                <Text style={local.detailRejectText}>Rechazar</Text>
+              </Pressable>
+              <Pressable
+                disabled={!isWorkerAvailable}
+                onPress={acceptJob}
+                style={[local.detailAcceptButton, !isWorkerAvailable && local.detailAcceptButtonDisabled]}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color={isWorkerAvailable ? "#FFFFFF" : "#6D7B88"} />
+                <Text style={[local.detailAcceptText, !isWorkerAvailable && local.detailAcceptTextDisabled]}>Aceptar trabajo</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
       </View>
 
       <ConfirmationDialog
         visible={showExitConfirmation}
-        title="Volver a solicitudes"
-        message="Si regresas ahora, saldras del detalle y volveras a la lista de solicitudes."
+        title={backTarget === "workerHome" ? "Volver a solicitudes" : "Volver a mis trabajos"}
+        message={
+          backTarget === "workerHome"
+            ? "Si regresas ahora, saldras del detalle y volveras a la lista de solicitudes."
+            : "Si regresas ahora, saldras del detalle y volveras a tus trabajos."
+        }
         confirmLabel="Regresar"
         cancelLabel="Quedarme aqui"
         onCancel={() => setShowExitConfirmation(false)}
         onConfirm={() => {
           setShowExitConfirmation(false);
-          navigate("workerHome");
+          navigate(backTarget);
         }}
       />
 
@@ -272,10 +372,33 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
             <View style={local.messageClientRow}>
               <View style={local.avatarMini} />
               <View>
-                <Text style={local.clientName}>{requestDetail.clientName}</Text>
+                <Text style={local.clientName}>{detail.clientName}</Text>
                 <Text style={local.messageClientHint}>Cliente de esta solicitud</Text>
               </View>
             </View>
+            <Text style={local.messageHistoryLabel}>HISTORIAL</Text>
+            <ScrollView style={local.messageHistory} contentContainerStyle={local.messageHistoryContent}>
+              {selectedJob.messages.length > 0 ? (
+                selectedJob.messages.map((message) => (
+                  <View
+                    key={message.id}
+                    style={[
+                      local.messageBubble,
+                      message.sender === "worker" ? local.messageBubbleWorker : local.messageBubbleClient
+                    ]}
+                  >
+                    <Text style={local.messageBubbleSender}>{message.sender === "worker" ? "Tú" : detail.clientName}</Text>
+                    <Text style={local.messageBubbleBody}>{message.body}</Text>
+                    <Text style={local.messageBubbleTime}>{message.sentAt}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={local.messageHistoryEmpty}>
+                  <Ionicons name="chatbubble-outline" size={20} color="#6D7B88" />
+                  <Text style={local.messageHistoryEmptyText}>Aún no hay mensajes en esta conversación.</Text>
+                </View>
+              )}
+            </ScrollView>
             <TextInput
               multiline
               onChangeText={setMessageDraft}
@@ -289,13 +412,27 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
               <Pressable onPress={() => setIsMessageSheetOpen(false)} style={local.messageSheetSecondary}>
                 <Text style={local.messageSheetSecondaryText}>Cancelar</Text>
               </Pressable>
-              <Pressable onPress={() => setIsMessageSheetOpen(false)} style={local.messageSheetPrimary}>
-                <Text style={local.messageSheetPrimaryText}>Enviar</Text>
+              <Pressable
+                disabled={!messageDraft.trim()}
+                onPress={sendMessage}
+                style={[local.messageSheetPrimary, !messageDraft.trim() && local.messageSheetPrimaryDisabled]}
+              >
+                <Text style={[local.messageSheetPrimaryText, !messageDraft.trim() && local.messageSheetPrimaryTextDisabled]}>Enviar</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
+
+      <ConfirmationDialog
+        visible={showRejectConfirmation}
+        title="Rechazar solicitud"
+        message="Esta solicitud se quitara de tu lista actual. Deseas continuar?"
+        confirmLabel="Rechazar"
+        cancelLabel="Cancelar"
+        onCancel={() => setShowRejectConfirmation(false)}
+        onConfirm={rejectJob}
+      />
     </WorkerShell>
   );
 }
@@ -303,7 +440,7 @@ export function RequestDetailScreen({ navigate, setWorkerRequests }: ScreenRende
 export function WorkConfirmationScreen({ navigate }: ScreenRenderProps) {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      navigate("workerHome");
+      navigate("myJobs");
     }, 1300);
 
     return () => clearTimeout(timeoutId);
@@ -326,27 +463,14 @@ export function WorkConfirmationScreen({ navigate }: ScreenRenderProps) {
 
 export function MyJobsScreen({
   navigate,
+  setSelectedWorkerJobId,
   setAuthenticatedRole,
-  setAuthenticatedWorker
+  setAuthenticatedWorker,
+  workerRequests
 }: ScreenRenderProps) {
   const { resetAccessibility } = useAccessibility();
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
-  const visibleJobs = [
-    {
-      id: "my-job-001",
-      title: "Mantenimiento preventivo",
-      location: "Jr. Junin 345, Cercado de Lima",
-      time: "15 Jul, 03:00 PM",
-      status: "AGENDADO" as const
-    },
-    {
-      id: "my-job-002",
-      title: "Mantenimiento preventivo",
-      location: "Jr. Junin 345, Cercado de Lima",
-      time: "01 Jun, 03:00 PM",
-      status: "COMPLETADO" as const
-    }
-  ];
+  const visibleJobs = workerRequests.filter((job) => job.status === "AGENDADO" || job.status === "COMPLETADO");
 
   return (
     <WorkerShell active="Mis Trabajos" onNavigate={(section) => navigateWorkerSection(navigate, section)}>
@@ -383,7 +507,13 @@ export function MyJobsScreen({
               </View>
 
               <View style={local.historyActionRow}>
-                <Pressable style={local.historyDetailButton}>
+                <Pressable
+                  onPress={() => {
+                    setSelectedWorkerJobId(job.id);
+                    navigate("requestDetail");
+                  }}
+                  style={local.historyDetailButton}
+                >
                   <Text style={local.historyDetailText}>Ver detalles</Text>
                 </Pressable>
                 <Pressable style={[local.historyCompleteButton, !isCompleted && local.historyCompleteButtonDisabled]}>
@@ -395,6 +525,13 @@ export function MyJobsScreen({
             </View>
           );
         })}
+        {visibleJobs.length === 0 ? (
+          <View style={local.emptyStateCard}>
+            <Ionicons name="calendar-outline" size={26} color="#6D7B88" />
+            <Text style={local.emptyStateTitle}>Aún no tienes trabajos</Text>
+            <Text style={local.emptyStateText}>Los trabajos que aceptes aparecerán aquí como agendados.</Text>
+          </View>
+        ) : null}
       </View>
 
       <ConfirmationDialog
@@ -417,13 +554,14 @@ export function MyJobsScreen({
 }
 export function WorkerProfileScreen({
   authenticatedWorker,
+  isWorkerAvailable,
   navigate,
   setAuthenticatedRole,
-  setAuthenticatedWorker
+  setAuthenticatedWorker,
+  setIsWorkerAvailable
 }: ScreenRenderProps) {
   const { highContrast, resetAccessibility } = useAccessibility();
   const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(true);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const workerFullName = authenticatedWorker
@@ -443,7 +581,7 @@ export function WorkerProfileScreen({
                 <Ionicons name="person" size={44} color="#FFFFFF" />
               </View>
             )}
-            <View style={[local.profileStatusDot, !isAvailable && local.profileStatusDotInactive]} />
+            <View style={[local.profileStatusDot, !isWorkerAvailable && local.profileStatusDotInactive]} />
           </View>
         </View>
 
@@ -463,13 +601,13 @@ export function WorkerProfileScreen({
           </View>
           <View style={local.profileToolsRow}>
             <View style={local.profileAvailability}>
-              <Text style={local.profileAvailabilityText}>{isAvailable ? "Activo" : "Inactivo"}</Text>
+              <Text style={local.profileAvailabilityText}>{isWorkerAvailable ? "Activo" : "Inactivo"}</Text>
               <Switch
                 ios_backgroundColor="#C8CCD2"
-                onValueChange={setIsAvailable}
+                onValueChange={setIsWorkerAvailable}
                 thumbColor="#FFFFFF"
                 trackColor={{ false: "#C8CCD2", true: "#00C853" }}
-                value={isAvailable}
+                value={isWorkerAvailable}
               />
             </View>
             <Pressable
@@ -550,22 +688,53 @@ export function WorkerProfileScreen({
       <Modal animationType="slide" transparent visible={showPaymentHistory} onRequestClose={() => setShowPaymentHistory(false)}>
         <View style={local.paymentHistoryOverlay}>
           <Pressable style={local.paymentHistoryScrim} onPress={() => setShowPaymentHistory(false)} />
-          <View style={local.paymentHistorySheet}>
+          <View accessibilityViewIsModal style={[local.paymentHistorySheet, highContrast && local.highContrastCard]}>
             <View style={local.messageSheetHandle} />
-            <Text style={local.paymentHistoryTitle}>Historial de pagos</Text>
-            <Text style={local.paymentHistorySubtitle}>Pagos registrados antes del 14/06/2026.</Text>
-            {workerPaymentHistory.map((payment) => (
-              <View key={payment.id} style={local.paymentHistoryRow}>
-                <View style={local.paymentHistoryIcon}>
-                  <Ionicons name="receipt-outline" size={18} color="#1976D2" />
-                </View>
-                <View style={local.flex}>
-                  <Text style={local.paymentHistoryService}>{payment.service}</Text>
-                  <Text style={local.paymentHistoryDate}>{payment.date}</Text>
-                </View>
-                <Text style={local.paymentHistoryAmount}>{payment.amount}</Text>
+            <View style={local.paymentHistoryHeader}>
+              <View style={local.flex}>
+                <Text accessibilityRole="header" style={local.paymentHistoryTitle}>Historial de pagos</Text>
+                <Text style={local.paymentHistorySubtitle}>Resumen de operaciones completadas</Text>
               </View>
-            ))}
+              <Pressable
+                accessibilityLabel="Cerrar historial de pagos"
+                accessibilityRole="button"
+                onPress={() => setShowPaymentHistory(false)}
+                style={local.paymentHistoryClose}
+              >
+                <Ionicons name="close" size={21} color="#102538" />
+              </Pressable>
+            </View>
+
+            <View style={local.paymentHistorySummary}>
+              <View>
+                <Text style={local.paymentHistorySummaryLabel}>Total recibido</Text>
+                <Text style={local.paymentHistorySummaryAmount}>S/ {workerPaymentTotal.toFixed(2)}</Text>
+              </View>
+              <View style={local.paymentHistoryCountPill}>
+                <Text style={local.paymentHistoryCount}>{workerPaymentHistory.length} pagos</Text>
+              </View>
+            </View>
+
+            <Text style={local.paymentHistoryListLabel}>OPERACIONES</Text>
+            <ScrollView style={local.paymentHistoryList} contentContainerStyle={local.paymentHistoryListContent}>
+              {workerPaymentHistory.map((payment) => (
+                <View key={payment.id} style={local.paymentHistoryRow}>
+                  <View style={local.paymentHistoryIcon}>
+                    <Ionicons name="receipt-outline" size={18} color="#1976D2" />
+                  </View>
+                  <View style={local.flex}>
+                    <Text style={local.paymentHistoryService}>{payment.service}</Text>
+                    <View style={local.paymentHistoryMeta}>
+                      <Text style={local.paymentHistoryDate}>{payment.date}</Text>
+                      <View style={local.paymentPaidPill}>
+                        <Text style={local.paymentPaidText}>Pagado</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={local.paymentHistoryAmount}>{payment.amount}</Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -858,7 +1027,22 @@ const local = {
     justifyContent: "center" as const,
     gap: 8
   },
+  detailAcceptButtonDisabled: { backgroundColor: "#E1E6EC" },
   detailAcceptText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" as const },
+  detailAcceptTextDisabled: { color: "#6D7B88" },
+  unavailableNotice: {
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: "#FFF5E6",
+    borderWidth: 1,
+    borderColor: "#E6A84A",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 9
+  },
+  unavailableNoticeText: { flex: 1, color: "#7A4600", fontSize: 12, lineHeight: 17, fontWeight: "700" as const },
   messageSheetOverlay: {
     flex: 1,
     justifyContent: "flex-end" as const,
@@ -868,6 +1052,7 @@ const local = {
     flex: 1
   },
   messageSheet: {
+    maxHeight: "92%" as const,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     backgroundColor: "#FFFFFF",
@@ -887,6 +1072,17 @@ const local = {
   messageSheetSubtitle: { color: "#6A7785", fontSize: 13, lineHeight: 18, textAlign: "center" as const },
   messageClientRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 10, marginTop: 4 },
   messageClientHint: { color: "#7A8693", fontSize: 12, fontWeight: "500" as const },
+  messageHistoryLabel: { color: "#6D7B88", fontSize: 10, fontWeight: "900" as const, letterSpacing: 0.6 },
+  messageHistory: { maxHeight: 180 },
+  messageHistoryContent: { gap: 8, paddingVertical: 2 },
+  messageBubble: { maxWidth: "86%" as const, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
+  messageBubbleWorker: { alignSelf: "flex-end" as const, backgroundColor: "#DCEEFF" },
+  messageBubbleClient: { alignSelf: "flex-start" as const, backgroundColor: "#EEF2F5" },
+  messageBubbleSender: { color: "#1976D2", fontSize: 10, fontWeight: "900" as const },
+  messageBubbleBody: { color: "#102538", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  messageBubbleTime: { color: "#6D7B88", fontSize: 10, textAlign: "right" as const, marginTop: 3 },
+  messageHistoryEmpty: { minHeight: 72, alignItems: "center" as const, justifyContent: "center" as const, gap: 6 },
+  messageHistoryEmptyText: { color: "#6D7B88", fontSize: 12, textAlign: "center" as const },
   messageInput: {
     minHeight: 112,
     borderRadius: 18,
@@ -916,7 +1112,25 @@ const local = {
     alignItems: "center" as const,
     justifyContent: "center" as const
   },
+  messageSheetPrimaryDisabled: { backgroundColor: "#E1E6EC" },
   messageSheetPrimaryText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" as const },
+  messageSheetPrimaryTextDisabled: { color: "#6D7B88" },
+  emptyStateCard: {
+    minHeight: 150,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#D6DEE8",
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8
+  },
+  emptyStateTitle: { color: "#102538", fontSize: 15, fontWeight: "900" as const, textAlign: "center" as const },
+  emptyStateText: { color: "#6D7B88", fontSize: 12, lineHeight: 18, textAlign: "center" as const },
+  missingJobState: { minHeight: 420, alignItems: "center" as const, justifyContent: "center" as const, gap: 12, padding: 24 },
+  missingJobButton: { minHeight: 44, borderRadius: 22, backgroundColor: "#021B30", paddingHorizontal: 20, alignItems: "center" as const, justifyContent: "center" as const },
+  missingJobButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" as const },
   workAcceptedScreen: { flex: 1, backgroundColor: "#F4F7FA" },
   workAcceptedTopBand: {
     height: 52,
@@ -1078,7 +1292,7 @@ const local = {
   },
   paymentHistoryScrim: { flex: 1 },
   paymentHistorySheet: {
-    marginBottom: 74,
+    maxHeight: "84%" as const,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     backgroundColor: "#FFFFFF",
@@ -1087,8 +1301,18 @@ const local = {
     paddingBottom: 28,
     gap: 12
   },
-  paymentHistoryTitle: { color: "#102538", fontSize: 18, fontWeight: "800" as const, textAlign: "center" as const },
-  paymentHistorySubtitle: { color: "#6A7785", fontSize: 13, lineHeight: 18, textAlign: "center" as const },
+  paymentHistoryHeader: { flexDirection: "row" as const, alignItems: "center" as const, gap: 12 },
+  paymentHistoryTitle: { color: "#102538", fontSize: 19, fontWeight: "900" as const },
+  paymentHistorySubtitle: { color: "#6A7785", fontSize: 12, lineHeight: 17, marginTop: 2 },
+  paymentHistoryClose: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#EEF2F5", borderWidth: 1, borderColor: "#D6DEE8", alignItems: "center" as const, justifyContent: "center" as const },
+  paymentHistorySummary: { minHeight: 94, borderRadius: 18, backgroundColor: "#021B30", paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12 },
+  paymentHistorySummaryLabel: { color: "#B9D3E8", fontSize: 12, fontWeight: "700" as const },
+  paymentHistorySummaryAmount: { color: "#FFFFFF", fontSize: 24, fontWeight: "900" as const, marginTop: 3 },
+  paymentHistoryCountPill: { borderRadius: 99, backgroundColor: "#0D3555", borderWidth: 1, borderColor: "#2B638F", paddingHorizontal: 11, paddingVertical: 7 },
+  paymentHistoryCount: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" as const },
+  paymentHistoryListLabel: { color: "#6D7B88", fontSize: 10, fontWeight: "900" as const, letterSpacing: 0.7 },
+  paymentHistoryList: { maxHeight: 300 },
+  paymentHistoryListContent: { gap: 9, paddingBottom: 4 },
   paymentHistoryRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -1107,6 +1331,9 @@ const local = {
     justifyContent: "center" as const
   },
   paymentHistoryService: { color: "#102538", fontSize: 13, fontWeight: "800" as const },
-  paymentHistoryDate: { color: "#6A7785", fontSize: 12, fontWeight: "500" as const, marginTop: 2 },
+  paymentHistoryMeta: { flexDirection: "row" as const, alignItems: "center" as const, gap: 7, marginTop: 4 },
+  paymentHistoryDate: { color: "#6A7785", fontSize: 11, fontWeight: "500" as const },
+  paymentPaidPill: { borderRadius: 99, backgroundColor: "#E6F8ED", paddingHorizontal: 7, paddingVertical: 3 },
+  paymentPaidText: { color: "#08783D", fontSize: 9, fontWeight: "900" as const },
   paymentHistoryAmount: { color: "#021B30", fontSize: 14, fontWeight: "900" as const }
 };

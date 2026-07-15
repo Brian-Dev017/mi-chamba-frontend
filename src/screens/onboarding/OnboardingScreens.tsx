@@ -1302,7 +1302,11 @@ export function IdentityScreen({
     documentTouched && documentType && documentNumber.length !== expectedLength
       ? `${documentType} debe tener ${expectedLength} numeros`
       : "";
-  const canContinue = Boolean(documentType) && documentNumber.length === expectedLength;
+  const canContinue =
+    Boolean(documentType) &&
+    documentNumber.length === expectedLength &&
+    Boolean(frontDniPhotoUri) &&
+    Boolean(backDniPhotoUri);
 
   const handleDocumentTypeSelect = (selectedType: IdentityDocumentType) => {
     setRegistrationDraft((currentDraft) => ({

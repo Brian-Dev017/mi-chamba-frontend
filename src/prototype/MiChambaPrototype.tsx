@@ -63,6 +63,8 @@ function MiChambaPrototypeContent() {
   const [authenticatedWorker, setAuthenticatedWorker] = useState<RegisteredWorker | null>(null);
   const [authenticatedRole, setAuthenticatedRole] = useState<UserRole | null>(null);
   const [workerRequests, setWorkerRequests] = useState(initialWorkerRequests);
+  const [selectedWorkerJobId, setSelectedWorkerJobId] = useState<string | null>(null);
+  const [isWorkerAvailable, setIsWorkerAvailable] = useState(true);
   const screens = useMemo(() => screenRegistry, []);
   const activeScreen = screens.find((screen) => screen.key === activeKey) ?? screens[0];
   const ActiveScreen = activeScreen.render;
@@ -89,7 +91,11 @@ function MiChambaPrototypeContent() {
     } = registrationDraft;
 
     if (!documentType || !professionalTrade || !documentNumber || !workerPassword) {
-      return;
+      throw new Error("Completa todos los datos obligatorios del trabajador.");
+    }
+
+    if (!frontDniPhotoUri || !backDniPhotoUri) {
+      throw new Error("Adjunta el anverso y reverso de la cedula de identidad.");
     }
 
     const documentAlreadyExists =
@@ -110,14 +116,16 @@ function MiChambaPrototypeContent() {
       password: workerPassword,
       professionalTrade,
       certificateUri,
-      profilePhotoUri
+      profilePhotoUri,
+      frontIdentityPhotoUri: frontDniPhotoUri,
+      backIdentityPhotoUri: backDniPhotoUri
     };
 
     setRegisteredWorkers((currentWorkers) => [
       ...currentWorkers.filter((currentWorker) => currentWorker.documentNumber !== documentNumber),
       worker
     ]);
-  }, [profilePhotoUri, registeredClients, registeredWorkers, registrationDraft]);
+  }, [backDniPhotoUri, frontDniPhotoUri, profilePhotoUri, registeredClients, registeredWorkers, registrationDraft]);
 
   const registerClient = useCallback(async () => {
     const documentNumber = registrationDraft.documentNumber;
@@ -163,7 +171,11 @@ function MiChambaPrototypeContent() {
     authenticatedRole,
     setAuthenticatedRole,
     workerRequests,
-    setWorkerRequests
+    setWorkerRequests,
+    selectedWorkerJobId,
+    setSelectedWorkerJobId,
+    isWorkerAvailable,
+    setIsWorkerAvailable
   };
 
   if (Platform.OS !== "web") {

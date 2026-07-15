@@ -89,6 +89,8 @@ export type RegisteredWorker = {
   professionalTrade: "Cerrajero" | "Plomero" | "Pintor" | "Gasfitero";
   certificateUri: string | null;
   profilePhotoUri: string | null;
+  frontIdentityPhotoUri: string;
+  backIdentityPhotoUri: string;
 };
 
 export type ScreenRenderProps = {
@@ -118,6 +120,17 @@ export type ScreenRenderProps = {
   setAuthenticatedRole: (role: UserRole | null) => void;
   workerRequests: WorkerJob[];
   setWorkerRequests: Dispatch<SetStateAction<WorkerJob[]>>;
+  selectedWorkerJobId: string | null;
+  setSelectedWorkerJobId: (jobId: string | null) => void;
+  isWorkerAvailable: boolean;
+  setIsWorkerAvailable: Dispatch<SetStateAction<boolean>>;
+};
+
+export type WorkerMessage = {
+  id: string;
+  body: string;
+  sentAt: string;
+  sender: "worker" | "client";
 };
 
 export type WorkerJob = {
@@ -128,6 +141,9 @@ export type WorkerJob = {
   price: string;
   time: string;
   status: "NUEVO" | "AGENDADO" | "COMPLETADO";
+  detail: ServiceRequestDetail;
+  referencePhotos: string[];
+  messages: WorkerMessage[];
 };
 
 export type Review = {
