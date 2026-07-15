@@ -13,6 +13,8 @@ const homeServicePhotos = [
 export const workerRequests: WorkerJob[] = [
   {
     id: "request-001",
+    clientId: "demo-client-001",
+    paymentMethod: "Plin",
     title: "Instalacion de tomacorrientes",
     category: "Electricidad",
     location: "Miraflores, Lima",
@@ -39,6 +41,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "request-002",
+    clientId: "demo-client-002",
+    paymentMethod: "Yape",
     title: "Reparacion de fuga en cocina",
     category: "Gasfitero",
     location: "Santiago de Surco, Lima",
@@ -65,6 +69,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "request-003",
+    clientId: "demo-client-003",
+    paymentMethod: "Efectivo",
     title: "Cambio de cerradura principal",
     category: "Cerrajero",
     location: "San Borja, Lima",
@@ -91,6 +97,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "request-004",
+    clientId: "demo-client-004",
+    paymentMethod: "Yape",
     title: "Pintura de dormitorio",
     category: "Pintor",
     location: "Magdalena, Lima",
@@ -117,6 +125,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "request-005",
+    clientId: "demo-client-005",
+    paymentMethod: "Plin",
     title: "Instalacion de luminarias",
     category: "Electricidad",
     location: "Jesus Maria, Lima",
@@ -143,6 +153,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "request-006",
+    clientId: "demo-client-006",
+    paymentMethod: "Efectivo",
     title: "Destape de desague",
     category: "Gasfitero",
     location: "La Molina, Lima",
@@ -169,6 +181,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "job-007",
+    clientId: "demo-client-007",
+    paymentMethod: "Plin",
     title: "Mantenimiento de tablero",
     category: "Electricidad",
     location: "Jr. Junin 345, Cercado de Lima",
@@ -198,6 +212,8 @@ export const workerRequests: WorkerJob[] = [
   },
   {
     id: "job-008",
+    clientId: "demo-client-008",
+    paymentMethod: "Efectivo",
     title: "Reparacion de grifo",
     category: "Gasfitero",
     location: "Av. Arequipa 1280, Lince",

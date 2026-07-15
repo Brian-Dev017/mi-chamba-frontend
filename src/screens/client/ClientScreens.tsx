@@ -1,41 +1,18 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { ConfirmationDialog, Ionicons, ScreenFrame } from "../../components/ui";
 import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
 import { useAccessibility, useAccessibleInputStyle } from "../../accessibility/AccessibilityContext";
 import { palette } from "../../theme/palette";
-import type { ScreenRenderProps } from "../../types/domain";
-
-type ActiveNeed = {
-  id: string;
-  title: string;
-  property: string;
-  location: string;
-  publishedAgo: string;
-  interestedWorkers: number;
-  latestResponse: {
-    workerName: string;
-    message: string;
-    receivedAgo: string;
-  } | null;
-};
+import type { PaymentMethod, RegisteredWorker, ScreenRenderProps, WorkerJob } from "../../types/domain";
 
 type ClientSection = "Inicio" | "Publicaciones" | "Perfil";
+type ServiceCategory = RegisteredWorker["professionalTrade"];
 
-const activeNeed: ActiveNeed = {
-  id: "need-001",
-  title: "Instalacion de tres tomacorrientes",
-  property: "Departamento",
-  location: "Chiclayo",
-  publishedAgo: "Hace 8 min",
-  interestedWorkers: 2,
-  latestResponse: {
-    workerName: "Juan Perez",
-    message: "Puedo realizar el trabajo hoy desde las 4:00 p. m.",
-    receivedAgo: "Hace 2 min"
-  }
-};
+const serviceCategories: ServiceCategory[] = ["Cerrajero", "Plomero", "Pintor", "Gasfitero"];
+const paymentMethods: PaymentMethod[] = ["Yape", "Plin", "Efectivo"];
 
 export function ClientRegistrationSuccessScreen({ navigate }: ScreenRenderProps) {
   return (
@@ -62,43 +39,140 @@ export function ClientHomeScreen({
   authenticatedClient,
   navigate,
   setAuthenticatedClient,
-  setAuthenticatedRole
+  setAuthenticatedRole,
+  setWorkerRequests,
+  workerRequests
 }: ScreenRenderProps) {
   const { highContrast, resetAccessibility } = useAccessibility();
   const accessibleInputStyle = useAccessibleInputStyle(14);
   const [activeSection, setActiveSection] = useState<ClientSection>("Inicio");
   const [isAccessibilityVisible, setAccessibilityVisible] = useState(false);
-  const [currentNeed, setCurrentNeed] = useState<ActiveNeed>(activeNeed);
   const [isComposerVisible, setComposerVisible] = useState(false);
   const [isLogoutConfirmationVisible, setLogoutConfirmationVisible] = useState(false);
-  const [isResponseExpanded, setResponseExpanded] = useState(false);
   const [needDraft, setNeedDraft] = useState("");
+  const [categoryDraft, setCategoryDraft] = useState<ServiceCategory | null>(null);
+  const [photoDraftUri, setPhotoDraftUri] = useState<string | null>(null);
+  const [priceDraft, setPriceDraft] = useState("");
+  const [paymentMethodDraft, setPaymentMethodDraft] = useState<PaymentMethod | null>(null);
+  const [selectedClientJobId, setSelectedClientJobId] = useState<string | null>(null);
+  const [messageDraft, setMessageDraft] = useState("");
   const clientName = authenticatedClient
     ? `${authenticatedClient.firstName} ${authenticatedClient.lastName}`.trim()
     : "Brian Monteza";
   const location = authenticatedClient?.address || "Chiclayo, Peru";
   const navigationHeight = 70;
+  const clientJobs = workerRequests.filter((job) => job.clientId === authenticatedClient?.id);
+  const selectedChatJob = workerRequests.find((job) => job.id === selectedClientJobId);
+  const normalizedPrice = Number(priceDraft.replace(",", "."));
+  const canPublish = Boolean(
+    authenticatedClient &&
+      needDraft.trim() &&
+      categoryDraft &&
+      photoDraftUri &&
+      paymentMethodDraft &&
+      Number.isFinite(normalizedPrice) &&
+      normalizedPrice > 0
+  );
+
+  const pickNeedImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permiso necesario", "Permite el acceso a tus fotos para adjuntar una imagen de la necesidad.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8
+      });
+
+      if (!result.canceled && result.assets[0]?.uri) {
+        setPhotoDraftUri(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert("No se pudo abrir la galeria", "Intenta seleccionar la imagen nuevamente.");
+    }
+  };
 
   const publishNeed = () => {
-    const title = needDraft.trim();
-
-    if (!title) {
+    if (!canPublish || !authenticatedClient || !categoryDraft || !photoDraftUri || !paymentMethodDraft) {
       return;
     }
 
-    setCurrentNeed({
-      id: `need-${Date.now()}`,
-      title,
-      property: authenticatedClient?.propertyType ?? "Vivienda",
-      location: authenticatedClient?.address || "Chiclayo",
-      publishedAgo: "Ahora",
-      interestedWorkers: 0,
-      latestResponse: null
-    });
+    const jobId = `request-${Date.now()}`;
+    const title = needDraft.trim();
+    const formattedPrice = `S/ ${normalizedPrice.toFixed(2)}`;
+
+    setWorkerRequests((currentJobs) => [
+      {
+        id: jobId,
+        clientId: authenticatedClient.id,
+        title,
+        category: categoryDraft,
+        location: authenticatedClient.address,
+        price: formattedPrice,
+        paymentMethod: paymentMethodDraft,
+        time: "Ahora",
+        status: "NUEVO",
+        detail: {
+          id: jobId,
+          clientName: clientName,
+          rating: "Nuevo",
+          completedServices: 0,
+          title,
+          category: categoryDraft,
+          description: title,
+          address: authenticatedClient.address,
+          distance: "Por calcular",
+          availability: "A coordinar",
+          materials: "Por coordinar",
+          duration: "Por coordinar",
+          paymentAmount: formattedPrice
+        },
+        referencePhotos: [photoDraftUri],
+        messages: []
+      },
+      ...currentJobs
+    ]);
     setNeedDraft("");
+    setCategoryDraft(null);
+    setPhotoDraftUri(null);
+    setPriceDraft("");
+    setPaymentMethodDraft(null);
     setComposerVisible(false);
-    setResponseExpanded(false);
     setActiveSection("Publicaciones");
+  };
+
+  const sendClientMessage = () => {
+    const body = messageDraft.trim();
+
+    if (!body || !selectedChatJob || !selectedChatJob.messages.some((message) => message.sender === "worker")) {
+      return;
+    }
+
+    setWorkerRequests((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === selectedChatJob.id
+          ? {
+              ...job,
+              messages: [
+                ...job.messages,
+                {
+                  id: `message-${Date.now()}`,
+                  body,
+                  sentAt: new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }),
+                  sender: "client" as const
+                }
+              ]
+            }
+          : job
+      )
+    );
+    setMessageDraft("");
   };
 
   const logout = () => {
@@ -158,16 +232,74 @@ export function ClientHomeScreen({
                     textAlignVertical="top"
                     value={needDraft}
                   />
+                  <Text style={local.composerFieldLabel}>Categoria del servicio</Text>
+                  <View style={local.optionGrid}>
+                    {serviceCategories.map((category) => (
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: categoryDraft === category }}
+                        key={category}
+                        onPress={() => setCategoryDraft(category)}
+                        style={[local.optionChip, categoryDraft === category && local.optionChipActive]}
+                      >
+                        <Text style={[local.optionChipText, categoryDraft === category && local.optionChipTextActive]}>{category}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={local.composerFieldLabel}>Imagen de la necesidad</Text>
+                  {photoDraftUri ? (
+                    <View style={local.photoPreviewWrap}>
+                      <Image accessibilityLabel="Imagen seleccionada de la necesidad" source={{ uri: photoDraftUri }} style={local.photoPreview} />
+                      <Pressable onPress={pickNeedImage} style={local.replacePhotoButton}>
+                        <Ionicons name="images-outline" size={17} color={palette.blue} />
+                        <Text style={local.replacePhotoText}>Cambiar imagen</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable accessibilityLabel="Agregar imagen de la necesidad" onPress={pickNeedImage} style={local.addPhotoButton}>
+                      <Ionicons name="camera-outline" size={21} color={palette.blue} />
+                      <Text style={local.addPhotoText}>Agregar imagen</Text>
+                    </Pressable>
+                  )}
+                  <Text style={local.composerFieldLabel}>Precio propuesto</Text>
+                  <View style={[local.priceInputShell, highContrast && local.highContrastInput]}>
+                    <Text style={local.pricePrefix}>S/</Text>
+                    <TextInput
+                      accessibilityLabel="Precio propuesto"
+                      keyboardType="decimal-pad"
+                      maxLength={8}
+                      onChangeText={(value) => setPriceDraft(value.replace(/[^0-9.,]/g, ""))}
+                      placeholder="0.00"
+                      placeholderTextColor="#8A97A4"
+                      style={[local.priceInput, accessibleInputStyle]}
+                      value={priceDraft}
+                    />
+                  </View>
+                  <Text style={local.composerFieldLabel}>Metodo de pago</Text>
+                  <View style={local.optionGrid}>
+                    {paymentMethods.map((method) => (
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: paymentMethodDraft === method }}
+                        key={method}
+                        onPress={() => setPaymentMethodDraft(method)}
+                        style={[local.optionChip, paymentMethodDraft === method && local.optionChipActive]}
+                      >
+                        <Text style={[local.optionChipText, paymentMethodDraft === method && local.optionChipTextActive]}>{method}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
                   <View style={local.composerActions}>
                     <Pressable onPress={() => setComposerVisible(false)} style={local.composerCancelButton}>
                       <Text style={local.composerCancelText}>Cancelar</Text>
                     </Pressable>
                     <Pressable
-                      disabled={!needDraft.trim()}
+                      accessibilityState={{ disabled: !canPublish }}
+                      disabled={!canPublish}
                       onPress={publishNeed}
-                      style={[local.composerPublishButton, !needDraft.trim() && local.disabledButton]}
+                      style={[local.composerPublishButton, !canPublish && local.disabledButton]}
                     >
-                      <Text style={[local.composerPublishText, !needDraft.trim() && local.disabledButtonText]}>
+                      <Text style={[local.composerPublishText, !canPublish && local.disabledButtonText]}>
                         Publicar
                       </Text>
                     </Pressable>
@@ -176,24 +308,27 @@ export function ClientHomeScreen({
               ) : null}
 
               <Text style={local.sectionTitle}>
-                {activeSection === "Publicaciones" ? "Mis publicaciones" : "Tu publicacion activa"}
+                {activeSection === "Publicaciones" ? "Mis publicaciones" : "Tus publicaciones activas"}
               </Text>
-              <ActiveNeedCard
-                need={currentNeed}
-                onViewResponses={() => setResponseExpanded((current) => !current)}
-              />
+              <View style={local.clientJobList}>
+                {clientJobs.map((job) => (
+                  <ActiveNeedCard
+                    job={job}
+                    key={job.id}
+                    onOpenChat={() => setSelectedClientJobId(job.id)}
+                  />
+                ))}
+              </View>
 
-              {isResponseExpanded && currentNeed.latestResponse ? (
-                <View style={local.expandedResponse}>
-                  <Text style={local.expandedResponseLabel}>Respuesta seleccionada</Text>
-                  <WorkerResponsePreview response={currentNeed.latestResponse} />
+              {clientJobs.length === 0 ? (
+                <View style={[local.activityEmpty, highContrast && local.highContrastCard]}>
+                  <Ionicons name="reader-outline" size={23} color={palette.muted} />
+                  <Text style={local.activityEmptyText}>Aun no tienes publicaciones. Crea una para recibir propuestas de trabajadores.</Text>
                 </View>
               ) : null}
 
               {activeSection === "Inicio" ? (
                 <>
-                  <Text style={local.sectionTitle}>Actividad reciente</Text>
-                  <WorkerResponsePreview response={currentNeed.latestResponse} />
                   <View style={local.safetyNote}>
                     <Ionicons name="shield-checkmark-outline" size={21} color={palette.blue} />
                     <Text style={local.safetyText}>
@@ -230,81 +365,108 @@ export function ClientHomeScreen({
         onClose={() => setAccessibilityVisible(false)}
         visible={isAccessibilityVisible}
       />
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setSelectedClientJobId(null)}
+        transparent
+        visible={Boolean(selectedChatJob)}
+      >
+        <View style={local.chatOverlay}>
+          <Pressable style={local.chatScrim} onPress={() => setSelectedClientJobId(null)} />
+          <View accessibilityViewIsModal style={[local.chatSheet, highContrast && local.highContrastCard]}>
+            <View style={local.chatHandle} />
+            <View style={local.chatHeader}>
+              <View style={local.chatHeaderCopy}>
+                <Text accessibilityRole="header" style={local.chatTitle}>Conversacion del trabajo</Text>
+                <Text numberOfLines={1} style={local.chatSubtitle}>{selectedChatJob?.title}</Text>
+              </View>
+              <Pressable accessibilityLabel="Cerrar conversacion" onPress={() => setSelectedClientJobId(null)} style={local.chatCloseButton}>
+                <Ionicons name="close" size={20} color={palette.ink} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={local.chatHistoryContent} style={local.chatHistory}>
+              {selectedChatJob?.messages.map((message) => (
+                <View
+                  key={message.id}
+                  style={[local.chatBubble, message.sender === "client" ? local.chatBubbleClient : local.chatBubbleWorker]}
+                >
+                  <Text style={local.chatSender}>{message.sender === "client" ? "Tu" : "Trabajador"}</Text>
+                  <Text style={local.chatBody}>{message.body}</Text>
+                  <Text style={local.chatTime}>{message.sentAt}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <TextInput
+              accessibilityLabel="Mensaje para el trabajador"
+              multiline
+              onChangeText={setMessageDraft}
+              placeholder="Escribe tu respuesta"
+              placeholderTextColor="#8A97A4"
+              style={[local.chatInput, accessibleInputStyle, highContrast && local.highContrastInput]}
+              textAlignVertical="top"
+              value={messageDraft}
+            />
+            <Pressable
+              accessibilityState={{ disabled: !messageDraft.trim() }}
+              disabled={!messageDraft.trim()}
+              onPress={sendClientMessage}
+              style={[local.chatSendButton, !messageDraft.trim() && local.disabledButton]}
+            >
+              <Ionicons name="send" size={17} color={messageDraft.trim() ? palette.white : palette.muted} />
+              <Text style={[local.chatSendText, !messageDraft.trim() && local.disabledButtonText]}>Enviar mensaje</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-function ActiveNeedCard({ need, onViewResponses }: { need: ActiveNeed; onViewResponses: () => void }) {
+function ActiveNeedCard({ job, onOpenChat }: { job: WorkerJob; onOpenChat: () => void }) {
   const { highContrast } = useAccessibility();
-  const hasResponses = need.interestedWorkers > 0;
+  const hasWorkerMessage = job.messages.some((message) => message.sender === "worker");
 
   return (
     <View style={[local.needCard, highContrast && local.highContrastCard]}>
       <View style={local.needMetaRow}>
         <View style={local.statusPill}>
           <View style={local.statusDot} />
-          <Text style={local.statusText}>Publicada</Text>
+          <Text style={local.statusText}>{job.status}</Text>
         </View>
-        <Text style={local.timeText}>{need.publishedAgo}</Text>
+        <Text style={local.timeText}>{job.time}</Text>
       </View>
-      <Text style={local.needTitle}>{need.title}</Text>
+      {job.referencePhotos[0] ? (
+        <Image accessibilityLabel={`Imagen de ${job.title}`} source={{ uri: job.referencePhotos[0] }} style={local.needPhoto} />
+      ) : null}
+      <Text style={local.needTitle}>{job.title}</Text>
       <View style={local.needLocationRow}>
-        <Ionicons name="business-outline" size={16} color={palette.muted} />
-        <Text style={local.needLocation}>{need.property} · {need.location}</Text>
+        <Ionicons name="construct-outline" size={16} color={palette.muted} />
+        <Text style={local.needLocation}>{job.category} · {job.location}</Text>
       </View>
 
-      <View style={local.responseSummary}>
-        <View style={local.avatarStack}>
-          <View style={local.workerAvatar}><Text style={local.workerInitials}>JP</Text></View>
-          {need.interestedWorkers > 1 ? (
-            <View style={[local.workerAvatar, local.workerAvatarOffset]}><Text style={local.workerInitials}>CM</Text></View>
-          ) : null}
+      <View style={local.needPaymentRow}>
+        <View>
+          <Text style={local.needPaymentLabel}>Precio propuesto</Text>
+          <Text style={local.needPaymentAmount}>{job.price}</Text>
         </View>
-        <View style={local.responseCopy}>
-          <Text style={local.responseCount}>
-            {hasResponses ? `${need.interestedWorkers} trabajadores interesados` : "Esperando respuestas"}
-          </Text>
-          <Text style={local.responseHint}>
-            {hasResponses ? "Compara sus propuestas y perfiles" : "Te avisaremos cuando un trabajador responda"}
-          </Text>
+        <View style={local.paymentMethodPill}>
+          <Text style={local.paymentMethodText}>{job.paymentMethod}</Text>
         </View>
       </View>
-
+      <Text style={local.chatAvailabilityHint}>
+        {hasWorkerMessage
+          ? `${job.messages.length} mensaje${job.messages.length === 1 ? "" : "s"} en la conversacion`
+          : "El chat se habilitara cuando un trabajador te escriba."}
+      </Text>
       <Pressable
-        disabled={!hasResponses}
-        onPress={onViewResponses}
-        style={[local.responsesButton, !hasResponses && local.disabledButton]}
+        accessibilityState={{ disabled: !hasWorkerMessage }}
+        disabled={!hasWorkerMessage}
+        onPress={onOpenChat}
+        style={[local.responsesButton, !hasWorkerMessage && local.disabledButton]}
       >
-        <Text style={[local.responsesButtonText, !hasResponses && local.disabledButtonText]}>Ver respuestas</Text>
-        <Ionicons name="arrow-forward" size={18} color={hasResponses ? palette.white : palette.muted} />
+        <Ionicons name="chatbubble-ellipses-outline" size={18} color={hasWorkerMessage ? palette.white : palette.muted} />
+        <Text style={[local.responsesButtonText, !hasWorkerMessage && local.disabledButtonText]}>Abrir conversacion</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function WorkerResponsePreview({ response }: { response: ActiveNeed["latestResponse"] }) {
-  const { highContrast } = useAccessibility();
-  if (!response) {
-    return (
-      <View style={[local.activityEmpty, highContrast && local.highContrastCard]}>
-        <Ionicons name="chatbubble-ellipses-outline" size={23} color={palette.muted} />
-        <Text style={local.activityEmptyText}>Aun no hay respuestas para esta publicacion.</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[local.activityRow, highContrast && local.highContrastCard]}>
-      <View style={local.activityAvatar}>
-        <Text style={local.activityInitials}>JP</Text>
-      </View>
-      <View style={local.activityCopy}>
-        <View style={local.activityHeader}>
-          <Text style={local.activityName}>{response.workerName} respondio</Text>
-          <Text style={local.activityTime}>{response.receivedAgo}</Text>
-        </View>
-        <Text style={local.activityMessage}>“{response.message}”</Text>
-      </View>
     </View>
   );
 }
@@ -447,21 +609,44 @@ const local = StyleSheet.create({
   composerPanel: { marginTop: 10, padding: 14, borderRadius: 17, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
   composerTitle: { color: palette.ink, fontSize: 14, fontWeight: "900", marginBottom: 9 },
   composerInput: { minHeight: 88, borderRadius: 13, borderWidth: 1, borderColor: "#B9C8D6", color: palette.ink, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingVertical: 10 },
+  composerFieldLabel: { color: palette.ink, fontSize: 12, fontWeight: "900", marginTop: 13, marginBottom: 7 },
+  optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  optionChip: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: "#B9C8D6", paddingHorizontal: 12, alignItems: "center", justifyContent: "center", backgroundColor: palette.white },
+  optionChipActive: { backgroundColor: palette.ink, borderColor: palette.ink },
+  optionChipText: { color: palette.ink, fontSize: 12, fontWeight: "800" },
+  optionChipTextActive: { color: palette.white },
+  addPhotoButton: { minHeight: 48, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: palette.blue, backgroundColor: palette.softBlue, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  addPhotoText: { color: palette.blue, fontSize: 13, fontWeight: "900" },
+  photoPreviewWrap: { gap: 8 },
+  photoPreview: { width: "100%", height: 150, borderRadius: 14, backgroundColor: "#D7DEE5" },
+  replacePhotoButton: { minHeight: 38, borderRadius: 19, alignSelf: "flex-start", paddingHorizontal: 12, borderWidth: 1, borderColor: palette.line, flexDirection: "row", alignItems: "center", gap: 6 },
+  replacePhotoText: { color: palette.blue, fontSize: 12, fontWeight: "800" },
+  priceInputShell: { minHeight: 46, borderRadius: 13, borderWidth: 1, borderColor: "#B9C8D6", paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8 },
+  pricePrefix: { color: palette.ink, fontSize: 14, fontWeight: "900" },
+  priceInput: { flex: 1, minHeight: 44, color: palette.ink, fontSize: 14, paddingVertical: 0 },
   composerActions: { flexDirection: "row", justifyContent: "flex-end", gap: 9, marginTop: 10 },
   composerCancelButton: { minHeight: 39, borderRadius: 20, paddingHorizontal: 15, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: palette.line },
   composerCancelText: { color: palette.ink, fontSize: 13, fontWeight: "800" },
   composerPublishButton: { minHeight: 39, borderRadius: 20, paddingHorizontal: 18, alignItems: "center", justifyContent: "center", backgroundColor: palette.blue },
   composerPublishText: { color: palette.white, fontSize: 13, fontWeight: "900" },
   sectionTitle: { color: palette.ink, fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 20, marginBottom: 10 },
+  clientJobList: { gap: 12 },
   needCard: { padding: 15, borderRadius: 17, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
   needMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: palette.softBlue },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: palette.blue },
   statusText: { color: palette.blue, fontSize: 12, fontWeight: "900" },
   timeText: { color: palette.muted, fontSize: 12 },
+  needPhoto: { width: "100%", height: 145, borderRadius: 14, marginTop: 12, backgroundColor: "#D7DEE5" },
   needTitle: { color: palette.ink, fontSize: 18, lineHeight: 24, fontWeight: "900", marginTop: 14 },
   needLocationRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 7 },
   needLocation: { color: palette.muted, fontSize: 13 },
+  needPaymentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderTopWidth: 1, borderTopColor: "#E7ECF2", marginTop: 15, paddingTop: 12 },
+  needPaymentLabel: { color: palette.muted, fontSize: 11, fontWeight: "700" },
+  needPaymentAmount: { color: palette.ink, fontSize: 18, fontWeight: "900", marginTop: 2 },
+  paymentMethodPill: { borderRadius: 99, backgroundColor: palette.softBlue, paddingHorizontal: 11, paddingVertical: 6 },
+  paymentMethodText: { color: palette.blue, fontSize: 11, fontWeight: "900" },
+  chatAvailabilityHint: { color: palette.muted, fontSize: 12, lineHeight: 17, marginTop: 12 },
   responseSummary: { flexDirection: "row", alignItems: "center", gap: 12, borderTopWidth: 1, borderTopColor: "#E7ECF2", marginTop: 15, paddingTop: 14 },
   avatarStack: { width: 56, height: 36, flexDirection: "row", alignItems: "center" },
   workerAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: palette.ink, borderWidth: 2, borderColor: palette.white, alignItems: "center", justifyContent: "center" },
@@ -506,6 +691,26 @@ const local = StyleSheet.create({
   profileAccessibilityDescription: { color: palette.muted, fontSize: 11, lineHeight: 16 },
   logoutButton: { minHeight: 44, marginTop: 22, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.softRed, borderWidth: 1, borderColor: "#F4B4B4" },
   logoutButtonText: { color: "#C92A2A", fontSize: 14, fontWeight: "900" },
+  chatOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(2,27,48,0.42)" },
+  chatScrim: { flex: 1 },
+  chatSheet: { maxHeight: "78%", paddingHorizontal: 17, paddingTop: 10, paddingBottom: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: palette.white, gap: 12 },
+  chatHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: "#CBD5DF", alignSelf: "center" },
+  chatHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  chatHeaderCopy: { flex: 1 },
+  chatTitle: { color: palette.ink, fontSize: 18, fontWeight: "900" },
+  chatSubtitle: { color: palette.muted, fontSize: 12, marginTop: 2 },
+  chatCloseButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "#EEF2F5" },
+  chatHistory: { maxHeight: 250 },
+  chatHistoryContent: { gap: 8, paddingVertical: 4 },
+  chatBubble: { maxWidth: "86%", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
+  chatBubbleClient: { alignSelf: "flex-end", backgroundColor: "#DCEEFF" },
+  chatBubbleWorker: { alignSelf: "flex-start", backgroundColor: "#EEF2F5" },
+  chatSender: { color: palette.blue, fontSize: 10, fontWeight: "900" },
+  chatBody: { color: palette.ink, fontSize: 13, lineHeight: 18, marginTop: 2 },
+  chatTime: { color: palette.muted, fontSize: 10, textAlign: "right", marginTop: 3 },
+  chatInput: { minHeight: 72, maxHeight: 110, borderRadius: 13, borderWidth: 1, borderColor: "#B9C8D6", color: palette.ink, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingVertical: 10 },
+  chatSendButton: { minHeight: 44, borderRadius: 22, backgroundColor: palette.blue, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  chatSendText: { color: palette.white, fontSize: 14, fontWeight: "900" },
   bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: 70, paddingTop: 5, paddingBottom: 8, backgroundColor: palette.white, borderTopWidth: 1, borderTopColor: palette.line, flexDirection: "row" },
   navItem: { flex: 1, minHeight: 50, alignItems: "center", justifyContent: "center", gap: 2 },
   navIconWrap: { width: 42, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center" },

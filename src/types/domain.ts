@@ -63,6 +63,8 @@ export type ClientPropertyType = "Casa" | "Departamento" | "Oficina" | "Local Co
 
 export type IdentityDocumentType = "DNI" | "Carnet de extranjeria";
 
+export type PaymentMethod = "Yape" | "Plin" | "Efectivo";
+
 export type RegisteredClient = {
   id: string;
   firstName: string;
@@ -135,10 +137,12 @@ export type WorkerMessage = {
 
 export type WorkerJob = {
   id: string;
+  clientId: string;
   title: string;
   category: string;
   location: string;
   price: string;
+  paymentMethod: PaymentMethod;
   time: string;
   status: "NUEVO" | "AGENDADO" | "COMPLETADO";
   detail: ServiceRequestDetail;

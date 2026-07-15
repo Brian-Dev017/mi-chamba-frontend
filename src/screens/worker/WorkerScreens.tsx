@@ -23,6 +23,7 @@ type WorkerModalState =
   | null;
 
 const homeFilters = ["Todos", "Cerca", "Mejor Precio", "Electricidad"] as const;
+const REQUESTS_PER_PAGE = 3;
 const workerPaymentHistory = [
   { id: "payment-001", date: "12/06/2026", service: "Instalacion de tomacorrientes", amount: "S/ 85.00" },
   { id: "payment-002", date: "06/06/2026", service: "Mantenimiento preventivo", amount: "S/ 120.00" },
@@ -59,6 +60,7 @@ export function WorkerHomeScreen({
 }: ScreenRenderProps) {
   const { resetAccessibility } = useAccessibility();
   const [activeFilter, setActiveFilter] = useState<(typeof homeFilters)[number]>("Todos");
+  const [currentPage, setCurrentPage] = useState(1);
   const [modalState, setModalState] = useState<WorkerModalState>(null);
   const workerName = authenticatedWorker
     ? `${authenticatedWorker.lastName}, ${authenticatedWorker.firstName}`
@@ -82,6 +84,15 @@ export function WorkerHomeScreen({
 
     return newJobs;
   })();
+  const totalPages = Math.max(1, Math.ceil(visibleJobs.length / REQUESTS_PER_PAGE));
+  const paginatedJobs = visibleJobs.slice(
+    (currentPage - 1) * REQUESTS_PER_PAGE,
+    currentPage * REQUESTS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const handleConfirmModal = () => {
     if (!modalState) {
@@ -124,14 +135,17 @@ export function WorkerHomeScreen({
         {homeFilters.map((filter) => (
           <Pressable
             key={filter}
-            onPress={() => setActiveFilter(filter)}
+            onPress={() => {
+              setActiveFilter(filter);
+              setCurrentPage(1);
+            }}
             style={[local.filterPill, activeFilter === filter && local.filterPillActive]}
           >
             <Text style={[local.filterPillText, activeFilter === filter && local.filterPillTextActive]}>{filter}</Text>
           </Pressable>
         ))}
       </ScrollView>
-      {visibleJobs.map((job) => (
+      {paginatedJobs.map((job) => (
         <JobRequestCard
           key={job.id}
           job={job}
@@ -147,6 +161,33 @@ export function WorkerHomeScreen({
           <Ionicons name="briefcase-outline" size={26} color="#6D7B88" />
           <Text style={local.emptyStateTitle}>No hay solicitudes disponibles</Text>
           <Text style={local.emptyStateText}>Prueba otro filtro o vuelve a revisar más tarde.</Text>
+        </View>
+      ) : null}
+      {visibleJobs.length > 0 ? (
+        <View style={local.paginationRow}>
+          <Pressable
+            accessibilityLabel="Pagina anterior de solicitudes"
+            accessibilityState={{ disabled: currentPage === 1 }}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            style={[local.paginationButton, currentPage === 1 && local.paginationButtonDisabled]}
+          >
+            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? "#8A96A3" : "#FFFFFF"} />
+            <Text style={[local.paginationButtonText, currentPage === 1 && local.paginationButtonTextDisabled]}>Anterior</Text>
+          </Pressable>
+          <Text accessibilityLabel={`Pagina ${currentPage} de ${totalPages}`} style={local.paginationLabel}>
+            {currentPage} de {totalPages}
+          </Text>
+          <Pressable
+            accessibilityLabel="Pagina siguiente de solicitudes"
+            accessibilityState={{ disabled: currentPage === totalPages }}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            style={[local.paginationButton, currentPage === totalPages && local.paginationButtonDisabled]}
+          >
+            <Text style={[local.paginationButtonText, currentPage === totalPages && local.paginationButtonTextDisabled]}>Siguiente</Text>
+            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? "#8A96A3" : "#FFFFFF"} />
+          </Pressable>
         </View>
       ) : null}
       <ConfirmationDialog
@@ -178,6 +219,7 @@ export function RequestDetailScreen({
   const accessibleInputStyle = useAccessibleInputStyle(14);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
+  const [showInactiveAlert, setShowInactiveAlert] = useState(false);
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
   const selectedJob = workerRequests.find((job) => job.id === selectedWorkerJobId);
@@ -213,7 +255,12 @@ export function RequestDetailScreen({
   };
 
   const acceptJob = () => {
-    if (!selectedJob || selectedJob.status !== "NUEVO" || !isWorkerAvailable) {
+    if (!selectedJob || selectedJob.status !== "NUEVO") {
+      return;
+    }
+
+    if (!isWorkerAvailable) {
+      setShowInactiveAlert(true);
       return;
     }
 
@@ -321,8 +368,8 @@ export function RequestDetailScreen({
           </View>
           <View style={local.paymentRow}>
             <Text style={local.priceLarge}>{detail.paymentAmount}</Text>
-            <View style={local.plinBadge}>
-              <Text style={local.plinBadgeText}>plin</Text>
+            <View style={local.paymentMethodBadge}>
+              <Text style={local.paymentMethodBadgeText}>{selectedJob.paymentMethod}</Text>
             </View>
           </View>
         </View>
@@ -347,7 +394,6 @@ export function RequestDetailScreen({
                 <Text style={local.detailRejectText}>Rechazar</Text>
               </Pressable>
               <Pressable
-                disabled={!isWorkerAvailable}
                 onPress={acceptJob}
                 style={[local.detailAcceptButton, !isWorkerAvailable && local.detailAcceptButtonDisabled]}
               >
@@ -441,6 +487,16 @@ export function RequestDetailScreen({
           </View>
         </View>
       </Modal>
+
+      <ConfirmationDialog
+        visible={showInactiveAlert}
+        title="Trabajador inactivo"
+        message="Estas inactivo. Activa tu disponibilidad desde el perfil para aceptar trabajos."
+        confirmLabel="Entendido"
+        cancelLabel="Cerrar"
+        onCancel={() => setShowInactiveAlert(false)}
+        onConfirm={() => setShowInactiveAlert(false)}
+      />
 
       <ConfirmationDialog
         visible={showRejectConfirmation}
@@ -771,6 +827,17 @@ function JobRequestCard({
 }) {
   return (
     <View style={local.jobCard}>
+      {job.referencePhotos[0] ? (
+        <Image
+          accessibilityLabel={`Imagen de la solicitud ${job.title}`}
+          source={{ uri: job.referencePhotos[0] }}
+          style={local.jobCardPhoto}
+        />
+      ) : (
+        <View style={local.jobCardPhotoPlaceholder}>
+          <Ionicons name="image-outline" size={25} color="#6D7B88" />
+        </View>
+      )}
       <View style={local.jobCardHeader}>
         <Text style={local.jobTitle}>{job.title}</Text>
         <View style={local.newPill}>
@@ -784,7 +851,7 @@ function JobRequestCard({
       <View style={local.jobInfoRow}>
         <View style={local.jobInfoItem}>
           <Ionicons name="card-outline" size={16} color="#00A6FF" />
-          <Text style={local.jobInfoText}>{job.price}</Text>
+          <Text style={local.jobInfoText}>{job.price} · {job.paymentMethod}</Text>
         </View>
         <View style={local.jobInfoItem}>
           <Ionicons name="time-outline" size={16} color="#00A6FF" />
@@ -844,6 +911,8 @@ const local = {
   filterPillActive: { backgroundColor: "#021B30" },
   filterPillTextActive: { color: "#FFFFFF", fontWeight: "700" as const },
   jobCard: { ...card, borderRadius: 14, padding: 14, gap: 14, shadowColor: "#1E293B", shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  jobCardPhoto: { width: "100%" as const, height: 138, borderRadius: 12, backgroundColor: "#D7DEE5" },
+  jobCardPhotoPlaceholder: { width: "100%" as const, height: 86, borderRadius: 12, backgroundColor: "#EEF2F5", alignItems: "center" as const, justifyContent: "center" as const },
   jobCardHeader: { flexDirection: "row" as const, alignItems: "flex-start" as const, justifyContent: "space-between" as const, gap: 10 },
   jobTitle: { color: "#102538", fontSize: 16, fontWeight: "800" as const, flex: 1 },
   newPill: { borderRadius: 99, backgroundColor: "#F4F6F8", paddingHorizontal: 8, paddingVertical: 4 },
@@ -872,6 +941,12 @@ const local = {
     justifyContent: "center" as const
   },
   detailButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "500" as const },
+  paginationRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 10, marginTop: 2, marginBottom: 6 },
+  paginationButton: { minHeight: 40, borderRadius: 20, paddingHorizontal: 13, backgroundColor: "#021B30", flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, gap: 4 },
+  paginationButtonDisabled: { backgroundColor: "#E1E6EC" },
+  paginationButtonText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" as const },
+  paginationButtonTextDisabled: { color: "#8A96A3" },
+  paginationLabel: { color: "#405163", fontSize: 12, fontWeight: "900" as const },
   myJobsHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -1006,15 +1081,16 @@ const local = {
   completePaymentPillText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" as const },
   paymentRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12 },
   priceLarge: { color: "#FFFFFF", fontSize: 20, fontWeight: "900" as const },
-  plinBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  paymentMethodBadge: {
+    minWidth: 62,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
     backgroundColor: "#16D1E6",
     alignItems: "center" as const,
     justifyContent: "center" as const
   },
-  plinBadgeText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" as const },
+  paymentMethodBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" as const },
   messageButton: {
     minHeight: 44,
     borderRadius: 22,
