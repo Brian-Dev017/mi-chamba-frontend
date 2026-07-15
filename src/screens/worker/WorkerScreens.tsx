@@ -1,4 +1,4 @@
-import { Image, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { useEffect, useState } from "react";
 import { ResponsiveText as Text } from "../../components/ResponsiveText";
 import { AccessibilitySettingsModal } from "../../accessibility/AccessibilitySettingsModal";
@@ -219,7 +219,6 @@ export function RequestDetailScreen({
   const accessibleInputStyle = useAccessibleInputStyle(14);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
-  const [showInactiveAlert, setShowInactiveAlert] = useState(false);
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState("");
   const selectedJob = workerRequests.find((job) => job.id === selectedWorkerJobId);
@@ -260,7 +259,11 @@ export function RequestDetailScreen({
     }
 
     if (!isWorkerAvailable) {
-      setShowInactiveAlert(true);
+      Alert.alert(
+        "Trabajador inactivo",
+        "Estas inactivo. Activa tu disponibilidad desde el perfil para aceptar trabajos.",
+        [{ text: "Entendido" }]
+      );
       return;
     }
 
@@ -487,16 +490,6 @@ export function RequestDetailScreen({
           </View>
         </View>
       </Modal>
-
-      <ConfirmationDialog
-        visible={showInactiveAlert}
-        title="Trabajador inactivo"
-        message="Estas inactivo. Activa tu disponibilidad desde el perfil para aceptar trabajos."
-        confirmLabel="Entendido"
-        cancelLabel="Cerrar"
-        onCancel={() => setShowInactiveAlert(false)}
-        onConfirm={() => setShowInactiveAlert(false)}
-      />
 
       <ConfirmationDialog
         visible={showRejectConfirmation}
